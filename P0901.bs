@@ -3,13 +3,13 @@ Title: Size feedback in operator new
 Status: P
 Shortname: P0901
 Group: WG21
-Revision: 0
-Editor: Andrew Hunter, Google, ahh@google.com
+Revision: 1
+Editor: Andrew Hunter, andrewhhunter@gmail.com
 Editor: Chris Kennelly, Google, ckennelly@google.com
-Date: 2018-02-05
+Date: 2018-08-01
 Audience: EWG
 Abstract: Provide access to actual malloc buffer sizes for users.
-URL: http://wg21.link/P0901R0
+URL: http://wg21.link/P0901R1
 Markup Shorthands: markdown yes
 Default Highlight: C++
 </pre>
@@ -18,7 +18,6 @@ Default Highlight: C++
 *Throughout this document "malloc" refers to the* **implementation**
 *of* `::operator new` *both as fairly standard practice for implementers, and to
 make clear the distinction between the interface and the implementation.*
-
 
 Everyone's favorite dynamic data structure, `std::vector`, allocates memory with
 code that looks something like this (with many details, like `Allocator`,
@@ -73,6 +72,7 @@ void vector::reserve(size_t new_cap) {
   capacity_ = bytes;
 }
 </xmp>
+
 This is a good start, and does in fact work to allow vector and friends to use
 the true extent of returned objects.  But there are three significant problems
 with this approach.
@@ -111,11 +111,11 @@ optimization problem to minimize the total internal fragmentation for any
 choice of N sizeclasses.  The exact results we've achieved are confidential,
 but the savings are significant.
 
-(sufficiently widespread use of) `nallocx` breaks this. By the time TCMalloc's
-telemetry sees a request that was hinted by nallocx, to the best of our
-knowledge the user *wants* exactly as many bytes as we currently provide them.
-If a huge number of callers wanted 40 bytes but were currently getting 48, we'd
-lose the ability to know that and optimize for it.
+Widespread use of `nallocx` breaks this. By the time TCMalloc's telemetry sees
+a request that was hinted by nallocx, to the best of our knowledge the user
+*wants* exactly as many bytes as we currently provide them.  If a huge number
+of callers wanted 40 bytes but were currently getting 48, we'd lose the ability
+to know that and optimize for it.
 
 Note that we can't take the same telemetry from `nallocx` calls: we have no
 idea how many times the resulting hint will be used (we might not allocate at
@@ -134,7 +134,7 @@ solution here.
 ## after allocation is too late ## {#afteralloc}
 
 Another obvious suggestion is to add a way to inspect the size of an object
-returned by `::operator new`. Most mallocs provide a way to do this; jemalloc
+returned by `::operator new`. Most mallocs provide a way to do this; [[jemalloc]]
 calls it `sallocx`.  Vector would look like:
 
 <xmp>
@@ -157,6 +157,7 @@ but this would be an implementation nightmare.
 ## realloc's day has passed ## {#realloc}
 
 We should also quickly examine why the classic C API `realloc` is insufficient.
+
 <xmp>
 void vector::reserve(size_t new_cap) {
   if (capacity_ >= new_cap) return;
@@ -182,7 +183,9 @@ allocation.  In the modern world, `realloc` serves little purpose.
 # Proposal # {#prop}
 
 We propose adding new overloads of `::operator new` that directly inform the
-user of the size available to them.
+user of the size available to them.  C++ makes `::operator new` replaceable
+(15.5.4.6), allowing a program to provide its own version different from the
+implementation.
 
 <xmp>
 struct std::return_size_t {};
@@ -196,9 +199,49 @@ std::sized_ptr_t ::operator new(size_t size, const std::return_size_t&);
 std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, const std::return_size_t&);
 std::sized_ptr_t ::operator new(size_t size, const std::nothrow_t &, const std::return_size_t&);
 std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t&);
+
+std::sized_ptr_t ::operator new[](size_t size, const std::return_size_t&);
+std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, const std::return_size_t&);
+std::sized_ptr_t ::operator new[](size_t size, const std::nothrow_t &, const std::return_size_t&);
+std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t&);
 </xmp>
 
-(We would need the same `::operator new[]` overloads; omitted for clarity.)
+Additionally, we amend 15.5.4.6 (Replacement functions), wording relative to [[N4762]]:
+
+<pre>
+operator new(std::size_t)
+operator new(std::size_t, std::align_val_t)
+operator new(std::size_t, const std::nothrow_t&)
+operator new(std::size_t, std::align_val_t, const std::nothrow_t&) <ins>
+std::sized_ptr_t ::operator new(size_t size, const std::return_size_t&);
+std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, const std::return_size_t&);
+std::sized_ptr_t ::operator new(size_t size, const std::nothrow_t &, const std::return_size_t&);
+std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t&);
+</ins>
+operator delete(void*)
+operator delete(void*, std::size_t)
+operator delete(void*, std::align_val_t)
+operator delete(void*, std::size_t, std::align_val_t)
+operator delete(void*, const std::nothrow_t&)
+operator delete(void*, std::align_val_t, const std::nothrow_t&)
+
+operator new[](std::size_t)
+operator new[](std::size_t, std::align_val_t)
+operator new[](std::size_t, const std::nothrow_t&)
+operator new[](std::size_t, std::align_val_t, const std::nothrow_t&)<ins>
+std::sized_ptr_t ::operator new[](size_t size, const std::return_size_t&);
+std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, const std::return_size_t&);
+std::sized_ptr_t ::operator new[](size_t size, const std::nothrow_t &, const std::return_size_t&);
+std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t&);
+</ins>
+operator delete[](void*)
+operator delete[](void*, std::size_t)
+operator delete[](void*, std::align_val_t)
+operator delete[](void*, std::size_t, std::align_val_t)
+operator delete[](void*, const std::nothrow_t&)
+operator delete[](void*, std::align_val_t, const std::nothrow_t&)
+</pre>
+
 Another signature we could use would be:
 
 <xmp>
@@ -224,9 +267,13 @@ obj.size = rs;
 More importantly, this form is less efficient. In practice, underlying malloc
 implementations provide actual definitions of `::operator new` symbols which
 are called like any other function.  Passing a reference parameter requires us
-to actually return the size via memory; most important ABIs support returning
-at least two scalar values in registers (even if they're members of a trivially
-copyable struct) which can be dramatically more efficient.
+to actually return the size via memory.
+
+*   Linux ABIs support returning at least two scalar values in registers (even if
+    they're members of a trivially copyable struct) which can be dramatically
+    more efficient.
+*   The [[MicrosoftABI]] returns large types by pointer, but this is no worse
+    than making the reference parameter an inherent part of the API.
 
 Whether we use a reference parameter or a second returned value, the
 interpretation is the same. Candidate (rough) language for the first overload
@@ -253,7 +300,8 @@ seems like far more than we should really need!  But there really isn't any
 significant runtime cost for having them.
 
 Any alternate proposal that didn't require so many trivially different
-signatures would be appreciated.
+signatures would be appreciated.  At the Jacksonville meeting, EWG suggested using
+parameter packs.
 
 ## Implementation difficulty ## {#trivial}
 
@@ -270,12 +318,174 @@ Malloc implementations are free to properly override this with a more impactful
 definition, but this paper poses no significant difficulty for toolchain
 implementers.
 
+Implementation Experience:
+*   TCMalloc has developed a (currently internal) implementation.  While this
+    requires mapping from an integer size class to the true number of bytes,
+    combining this lookup with the allocation is more efficient as we avoid
+    recomputing the sizeclass itself (given a request) or deriving it from the
+    object's address.
+*   jemalloc is prototyping a `smallocx` function providing a C API for this
+    functionality [[smallocx]].
+
+## Interaction with Sized Delete ## {#sizeddelete}
+
+For allocations made with `sized_ptr_t`-returning `::operator new`, we need to
+relax `::operator delete`'s size argument (16.6.2.1 and 16.6.2.2).  For
+allocations of `T`, the size quanta used by the allocator may not be a multiple
+of `sizeof(T)`, leading to both the original and returned sizes being
+unrecoverable at the time of deletion.
+
+Consider the memory allocated by:
+<xmp>
+using T = std::aligned_storage<16, 8>::type;
+
+std::vector<T> v(4);
+</xmp>
+The underlying heap allocation is made with `::operator new(64,
+std::return_size_t)`.
+
+*   The memory allocator may returns a 72 byte object: We cannot represent that
+    buffer size in multiples of `sizeof(T)`, because it only stores `begin`,
+    `end`, and `end_capacity` as `T*`.
+*   The memory allocator may instead return an 80 byte object (5 `T`'s):  We
+    now cannot represent the original request when deallocating without
+    additional storage.
+
+For allocations made with
+<xmp>
+std::tie(p, m) = ::operator new(n, std::return_size_t{});
+</xmp>
+
+we permit `::operator delete(p, s)` where `n <= s <= m`.
+
+This behavior is consistent with [[jemalloc]]'s `sdallocx`, where the
+deallocation size must fall between the request (`n`) and the actual allocated
+size (`m`) inclusive.
+
+TODO Include confirmation that this is okay with ASan
+
 ## Advantages ## {#advantages}
 
 It's easy to see that this approach nicely solves the problems with `nallocx`
 or the like.  We pay almost nothing in speed to return an actual-size
 parameter; allocator telemetry knows actual request sizes exactly; and we are
 told exactly the size we have, without risk of UB.
+
+# New Expressions # {#new}
+
+Additionally, we propose expanding this functionality to `new` expressions by returning:
+
+*   For `new`, pointers to the object created and the end of the allocation.
+*   For `new[]`, pointers to the initial element of the array and one past the
+    last element of the array.
+
+    <xmp>
+    auto [start, end] = new (std::return_size_t) T[5];
+    for (T* p = start + 5; p != end; p++) {
+        new (p) T;
+    }
+    for (T* p = start; p != end; p++) {
+        p->DoStuff();
+    }
+    for (T* p = start + 5; p != end; p++) {
+        p->~T();
+    }
+    delete[] start;
+    </xmp>
+
+    The pair of pointers provides convience for use with iterator-oriented
+    algorithms.
+
+We considered alternatives for returning the size.
+
+*   We could return the size in units of *bytes* (minus the array allocation
+    overhead).
+
+    <xmp>
+    auto [p, sz] = new (std::return_size_t) T[5];
+    for (int i = 5; i < sz / sizeof(T); i++) {
+      new (p[i]) T;
+    }
+    for (int i = 0; i < sz / sizeof(T); i++) {
+      p[i].DoStuff();
+    }
+    for (int i = 5; i < sz / sizeof(T); i++) {
+      p[i].~T();
+    }
+    delete[] p;
+    </xmp>
+
+*   We could return the size in units of `T`, this leads to an inconsistency
+    between the expected usage for `new` and `new[]`:
+
+    *   For `new`, we may only end up fitting a single `T` into an allocator size
+        quanta, so the extra space remains unusable.  If we can fit multiple `T`
+        into a single allocator size quanta, we now have an array from what was a
+        scalar allocation site.  This cannot be foreseen by the compiler as
+        `::operator new` is a replaceable function.
+
+    *   For `new[]`, the size in units of `T` can easily be derived from the
+        returned size in bytes.
+
+*   We could pass the size in units of `T` or bytes to the constructor of `T`:
+
+    *   For `new`, this is especially useful for tail-padded arrays, but
+        neglects default-initialized `T`.
+
+    *   For `new[]`, a common use case is expected to be the allocation of
+        arrays of `char`, `int`, etc.  The size of the overall array is
+        irrelevant for the individual elements.
+
+*   We could return the size via a reference parameter:
+
+    <xmp>
+    std::return_end<T> end;
+    T* p = new (end) T[5];
+    for (T* p = start + 5; p != end; p++) {
+        new (p) T;
+    }
+    for (T* p = start; p != end; p++) {
+        p->DoStuff();
+    }
+    for (T* p = start + 5; p != end; p++) {
+        p->~T();
+    }
+    </xmp>
+
+    or, demonstrated with bytes:
+
+    <xmp>
+    std::return_size_t size;
+    T* p = new (s) T[5];
+    for (int i = 5; i < size / sizeof(T); i++) {
+      new (p[i]) T;
+    }
+    for (int i = 0; i < size / sizeof(T); i++) {
+      p[i].DoStuff();
+    }
+    for (int i = 5; i < size / sizeof(T); i++) {
+      p[i].~T();
+    }
+    delete[] p;
+    </xmp>
+    (Casts omitted for clarity.)
+
+    As discussed for `::operator new` in [[#prop]], a reference parameter poses
+    difficulties for optimizers and involves returning the size via
+    memory (depending on ABI).
+
+For `new[]` expressions, we considered alternatively initializing the returned
+(`sz / sizeof(T)`) number of elements.
+
+*   This would avoid the need to explicitly construct / destruct the elements
+    with the additional returned space (if any).
+
+    The *new-initializer* is invoked for the returned number of elements,
+    rather than the requested number of elements.  This allows `delete[]` to
+    destroy the correct number of elements (by storing `sz / sizeof(T)` in the
+    array allocation overhead).
+*   The presented proposal (leaving this space uninitialized) was chosen for
+    consistency with `new`.
 
 # Related work # {#rel}
 
@@ -287,6 +497,21 @@ way that would work with any underlying malloc implementation?
 If this proposal is accepted, it's likely that [[AllocatorExt]] should be taken
 up again.
 
+# History # {#history}
+
+## R0 &rarr; R1 ## {#R1}
+
+Applied feedback from [[JacksonvilleMinutes]].
+
+*   Clarified in [[#prop]] the desire to leverage the existing "replacement
+    functions" wording of the IS, particularly given the close interoperation
+    with the existing `::operator new`/`::operator delete` implementations.
+*   Added a discussion of the Microsoft ABI in [[#prop]].
+*   Noted in [[#splode]] the possibility of using a parameter pack.
+*   Added a proposal for [[#new]], as requested by EWG.
+
+Additionally, a discussion of [[#sizeddelete]] has been added.
+
 <pre class=biblio>
 {
     "AllocatorExt": {
@@ -296,15 +521,38 @@ up again.
         "title": "Extensions to the Allocator interface"
     },
 
+    "JacksonvilleMinutes": {
+        "href": "http://wiki.edg.com/bin/view/Wg21jacksonville2018/P0901R0-Jax18",
+        "date": "2018-03-15",
+        "title": "Jacksonville 2018 minutes"
+    },
+
     "jemalloc": {
         "title": "jemalloc(3) - Linux man page",
         "href": "http://jemalloc.net/jemalloc.3.html"
+    },
+
+    "MicrosoftABI": {
+        "title": "Return Values",
+        "href": "https://docs.microsoft.com/en-us/cpp/build/return-values-cpp",
+        "date": "2016-11-03"
+    },
+
+    "N4762": {
+        "title": "Working Draft, Standard for Programming Language C++",
+        "href": "https://wg21.link/N4762",
+        "date": "2018-07-07"
     },
 
     "SizedDelete": {
         "title": "C++ Sized Deallocation",
         "authors": "Lawrence Crowl",
         "href": "http://wg21.link/n3536"
+    },
+
+    "smallocx": {
+        "href": "https://github.com/jemalloc/jemalloc/pull/1270",
+        "title": "Add experimental API to support P0901r0"
     }
 }
 </pre>
