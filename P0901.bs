@@ -108,8 +108,7 @@ cover.  Since then, we have used extensive telemetry on allocator use in the
 wild to tune these choices. In particular, as we know (approximately) how many
 objects of any given size are requested, we can solve a fairly simple
 optimization problem to minimize the total internal fragmentation for any
-choice of N sizeclasses.  The exact results we've achieved are confidential,
-but the savings are significant.
+choice of N sizeclasses.
 
 Widespread use of `nallocx` breaks this. By the time TCMalloc's telemetry sees
 a request that was hinted by nallocx, to the best of our knowledge the user
@@ -346,7 +345,8 @@ std::return_size_t)`.
 
 *   The memory allocator may returns a 72 byte object: We cannot represent that
     buffer size in multiples of `sizeof(T)`, because it only stores `begin`,
-    `end`, and `end_capacity` as `T*`.
+    `end`, and `end_capacity` as `T*`.  There exists no `k` such that `16k =
+    72`.
 *   The memory allocator may instead return an 80 byte object (5 `T`'s):  We
     now cannot represent the original request when deallocating without
     additional storage.
@@ -361,8 +361,6 @@ we permit `::operator delete(p, s)` where `n <= s <= m`.
 This behavior is consistent with [[jemalloc]]'s `sdallocx`, where the
 deallocation size must fall between the request (`n`) and the actual allocated
 size (`m`) inclusive.
-
-TODO Include confirmation that this is okay with ASan
 
 ## Advantages ## {#advantages}
 
