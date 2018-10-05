@@ -343,10 +343,10 @@ std::vector<T> v(4);
 The underlying heap allocation is made with `::operator new(64,
 std::return_size_t)`.
 
-*   The memory allocator may returns a 72 byte object: We cannot represent that
-    buffer size in multiples of `sizeof(T)`, because it only stores `begin`,
-    `end`, and `end_capacity` as `T*`.  There exists no `k` such that `16k =
-    72`.
+*   The memory allocator may return a 72 byte object:  Since there is no `k`
+    such that `sizeof(T) * k = 72`, we can't provide that value to `::operator
+    delete(void*, size_t)`.  The only option would be storing 72 explicitly,
+    which would be wasteful.
 *   The memory allocator may instead return an 80 byte object (5 `T`'s):  We
     now cannot represent the original request when deallocating without
     additional storage.
