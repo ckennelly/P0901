@@ -194,15 +194,15 @@ struct std::sized_ptr_t {
   size_t n;
 };
 
-std::sized_ptr_t ::operator new(size_t size, const std::return_size_t&);
-std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, const std::return_size_t&);
-std::sized_ptr_t ::operator new(size_t size, const std::nothrow_t &, const std::return_size_t&);
-std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t&);
+std::sized_ptr_t ::operator new(size_t size, std::return_size_t);
+std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, std::return_size_t);
+std::sized_ptr_t ::operator new(size_t size, const std::nothrow_t &, std::return_size_t);
+std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t);
 
-std::sized_ptr_t ::operator new[](size_t size, const std::return_size_t&);
-std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, const std::return_size_t&);
-std::sized_ptr_t ::operator new[](size_t size, const std::nothrow_t &, const std::return_size_t&);
-std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t&);
+std::sized_ptr_t ::operator new[](size_t size, std::return_size_t);
+std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, std::return_size_t);
+std::sized_ptr_t ::operator new[](size_t size, const std::nothrow_t &, std::return_size_t);
+std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t);
 </xmp>
 
 Additionally, we amend 15.5.4.6 (Replacement functions), wording relative to [[N4762]]:
@@ -212,10 +212,10 @@ operator new(std::size_t)
 operator new(std::size_t, std::align_val_t)
 operator new(std::size_t, const std::nothrow_t&)
 operator new(std::size_t, std::align_val_t, const std::nothrow_t&) <ins>
-std::sized_ptr_t ::operator new(size_t size, const std::return_size_t&);
-std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, const std::return_size_t&);
-std::sized_ptr_t ::operator new(size_t size, const std::nothrow_t &, const std::return_size_t&);
-std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t&);
+std::sized_ptr_t ::operator new(size_t size, std::return_size_t);
+std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, std::return_size_t);
+std::sized_ptr_t ::operator new(size_t size, const std::nothrow_t &, std::return_size_t);
+std::sized_ptr_t ::operator new(size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t);
 </ins>
 operator delete(void*)
 operator delete(void*, std::size_t)
@@ -228,10 +228,10 @@ operator new[](std::size_t)
 operator new[](std::size_t, std::align_val_t)
 operator new[](std::size_t, const std::nothrow_t&)
 operator new[](std::size_t, std::align_val_t, const std::nothrow_t&)<ins>
-std::sized_ptr_t ::operator new[](size_t size, const std::return_size_t&);
-std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, const std::return_size_t&);
-std::sized_ptr_t ::operator new[](size_t size, const std::nothrow_t &, const std::return_size_t&);
-std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t&);
+std::sized_ptr_t ::operator new[](size_t size, std::return_size_t);
+std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, std::return_size_t);
+std::sized_ptr_t ::operator new[](size_t size, const std::nothrow_t &, std::return_size_t);
+std::sized_ptr_t ::operator new[](size_t size, std::align_val_t al, const std::nothrow_t &, std::return_size_t);
 </ins>
 operator delete[](void*)
 operator delete[](void*, std::size_t)
@@ -245,7 +245,7 @@ Another signature we could use would be:
 
 <xmp>
 enum class return_size_t : std::size_t {};
-void* ::operator new(size_t size, std::return_size_t&);
+void* ::operator new(size_t size, std::return_size_t);
 </xmp>
 
 (and so on.)  This is slightly simpler to read as a signature, but arguably
@@ -280,7 +280,7 @@ would be:
 
 <xmp>
 [[nodiscard]]] std::sized_ptr_t ::operator new(size_t size, const
-std::return_size_t&);
+std::return_size_t);
 </xmp>
 
 > *Effects*: returns a pair (p, n) with `n >= size`.
@@ -308,7 +308,7 @@ It's worth reiterating that there's a perfectly good trivial implementation of t
 functions:
 
 <xmp>
-std::sized_ptr_t ::operator new(size_t n, const std::return_size_t&) {
+std::sized_ptr_t ::operator new(size_t n, std::return_size_t) {
   return {::operator new(n), n};
 }
 </xmp>
@@ -496,6 +496,14 @@ If this proposal is accepted, it's likely that [[AllocatorExt]] should be taken
 up again.
 
 # History # {#history}
+
+## R1 &rarr; R2 ## {#R2}
+
+Applied feedback from San Diego Mailing
+
+*   Moved from passing `std::return_size_t` parameter by reference to by value.
+    For many ABIs, this is more optimizable and to the authors' knowledge, no
+    worse on any other.
 
 ## R0 &rarr; R1 ## {#R1}
 
