@@ -558,6 +558,12 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
         "date": "2018-07-07"
     },
 
+    "P0401": {
+        "title": "Extensions to the Allocator interface",
+        "date": "2015-07-08",
+        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0401r0.html"
+    },
+
     "SizedDelete": {
         "title": "C++ Sized Deallocation",
         "authors": "Lawrence Crowl",
