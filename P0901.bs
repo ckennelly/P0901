@@ -296,11 +296,18 @@ called with.**
 
 It is unfortunate that we have so many permutations of `::operator new`--eight
 seems like far more than we should really need!  But there really isn't any
-significant runtime cost for having them.
+significant runtime cost for having them.  Use of raw calls to `::operator new`
+is relatively rare:  It's a *building block* for low-level libraries, allocators
+([[P0401]]), and so on, so the cognitive burden on C++ users is low.
 
-Any alternate proposal that didn't require so many trivially different
-signatures would be appreciated.  At the Jacksonville meeting, EWG suggested using
-parameter packs.
+The authors have considered other alternatives to the additional overloads.  At
+the Jacksonville meeting, EWG suggested looking at parameter packs.
+
+*   Parameter packs do not reduce the number of symbols introduced.
+    Implementers still need to provide implementations each of the n overloads.
+*   Retrofitting parameter packs leaves us with *more* mangled variants.
+    Implementers need to provide both the legacy symbols as well as the
+    parameter pack-mangled symbols.
 
 ## Implementation difficulty ## {#trivial}
 
@@ -504,6 +511,7 @@ Applied feedback from San Diego Mailing
 *   Moved from passing `std::return_size_t` parameter by reference to by value.
     For many ABIs, this is more optimizable and to the authors' knowledge, no
     worse on any other.
+*   Added rationale for not using parameter packs for this functionality.
 
 ## R0 &rarr; R1 ## {#R1}
 
