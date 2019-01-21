@@ -215,13 +215,12 @@ Objects created by a *new-expression* have dynamic storage duration
 necessarily restricted to the scope in which it is created. — end note ]
 
 When the allocated object is not an array, the result of the new-expression is
-<ins>
 
-*   if the new-expression is a size-returning placement new expression (see
+*   <ins>if the new-expression is a size-returning placement new expression (see
     below), an object of type `std::return_size_t` ([new.syn]) whose `p`
     member points to the object created and whose `n` member is the `n` member
-    of the value returned by the size-returning allocation function;
-*   otherwise,</ins> a pointer to the object created.
+    of the value returned by the size-returning allocation function;</ins>
+*   <ins>otherwise,</ins> a pointer to the object created.
 
 </blockquote>
 
