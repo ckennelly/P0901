@@ -654,10 +654,17 @@ size (`m`) inclusive.
 
 ## Advantages ## {#advantages}
 
-It's easy to see that this approach nicely solves the problems with `nallocx`
-or the like.  We pay almost nothing in speed to return an actual-size
-parameter; allocator telemetry knows actual request sizes exactly; and we are
-told exactly the size we have, without risk of UB.
+It's easy to see that this approach nicely solves the problems posed by other methods:
+
+*    We pay almost nothing in speed to return an actual-size parameter.  For
+     TCMalloc and jemalloc, this is typically a load from to map from
+     *sizeclass* to size.  This cost is strictly smaller than with `nallocx` or
+     the like, as that same translation must be performed in addition to the
+     duplicative work previously discussed.
+*    We are told exactly the size we have, without risk of UB.  We can avoid
+     subsequent reallocations when growing to a buffer to an already-allocated
+     size.
+*    Allocator telemetry knows actual request sizes exactly.
 
 # New Expressions # {#new}
 
