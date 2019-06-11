@@ -571,7 +571,7 @@ It is unfortunate that we have so many permutations of `::operator new`--eight
 seems like far more than we should really need!  But there really isn't any
 significant runtime cost for having them.  Use of raw calls to `::operator new`
 is relatively rare:  It's a *building block* for low-level libraries, allocators
-([[P0401]]), and so on, so the cognitive burden on C++ users is low.
+([[P0401R1]]), and so on, so the cognitive burden on C++ users is low.
 
 The authors have considered other alternatives to the additional overloads.  At
 the Jacksonville meeting, EWG suggested looking at parameter packs.
@@ -789,15 +789,17 @@ For `new[]` expressions, we considered alternatively initializing the returned
 
 # Related work # {#rel}
 
-[[AllocatorExt]] considered this problem at the level of the `Allocator`
-concept. Ironically, the lack of the above API was one significant problem: how
-could an implementation of `std::allocator` provide the requested feedback in a
-way that would work with any underlying malloc implementation?
-
-If this proposal is accepted, it's likely that [[AllocatorExt]] should be taken
-up again.
+[[P0401R1]] considers this problem at the level of the `Allocator` concept.
+Ironically, the lack of the above API was one significant problem in its
+original revision: how could an implementation of `std::allocator` provide the
+requested feedback in a way that would work with any underlying malloc
+implementation?
 
 # History # {#history}
+
+## R3 &rarr; R4 ## {#R4}
+
+*   Update reference to revised [[P0401R1]].
 
 ## R2 &rarr; R3 ## {#R3}
 
@@ -829,11 +831,11 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
 
 <pre class=biblio>
 {
-    "AllocatorExt": {
-        "href": "http://wg21.link/P0401R0",
-        "authors": ["Jonathan Wakely"],
-        "date": "2015-07-08",
-        "title": "Extensions to the Allocator interface"
+    "P0401R1": {
+        "href": "http://wg21.link/P0401R1",
+        "authors": ["Jonathan Wakely", "Chris Kennelly"],
+        "date": "2019-06-11",
+        "title": "Providing size feedback in the Allocator interface"
     },
 
     "JacksonvilleMinutes": {
