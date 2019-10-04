@@ -328,7 +328,11 @@ namespace std {
   inline constexpr destroying_delete_t destroying_delete{};
 
 <ins>
-  struct std::return_size_t {};
+  struct return_size_t {
+    explicit return_size_t() = default;
+  };
+
+  inline constexpr return_size_t return_size{};
 
   template&lt;typename T = void&gt;
   struct std::sized_ptr_t {
@@ -675,7 +679,7 @@ Additionally, we propose expanding this functionality to `new` expressions by re
     the allocation in bytes (less overhead):
 
     <xmp>
-    auto [p, sz] = new (std::return_size_t) T[5];
+    auto [p, sz] = new (std::return_size) T[5];
     for (int i = 5; i < sz / sizeof(T); i++) {
       new (p[i]) T;
     }
@@ -695,7 +699,7 @@ We considered alternatives for returning the size.
     the array (minus the array allocation overhead).
 
     <xmp>
-    auto [start, end] = new (std::return_size_t) T[5];
+    auto [start, end] = new (std::return_size) T[5];
     for (T* p = start + 5; p != end; p++) {
         new (p) T;
     }
@@ -756,7 +760,7 @@ We considered alternatives for returning the size.
 
     <xmp>
     std::return_size_t size;
-    T* p = new (s) T[5];
+    T* p = new (size) T[5];
     for (int i = 5; i < size / sizeof(T); i++) {
       new (p[i]) T;
     }
@@ -796,6 +800,10 @@ requested feedback in a way that would work with any underlying malloc
 implementation?
 
 # History # {#history}
+
+## R4 &rarr; R5 ## {#R5}
+
+*   Fixed typos in examples.
 
 ## R3 &rarr; R4 ## {#R4}
 
