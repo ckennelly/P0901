@@ -531,6 +531,15 @@ void operator delete[](void* ptr, std::size_t size, std::align_val_t alignment) 
 [...]
 </blockquote>
 
+* Amend Table 17 ("Feature-test macros") [cpp.predefined] (15.10)
+
+<blockquote>
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td><ins>`__cpp_size_returning_new`</ins></td><td><ins>PLACEHOLDER DATE</ins></td></tr>
+</table>
+</blockquote>
+
 # Alternative Designs Considered # {#alternatives}
 
 Another signature we could use would be:
@@ -804,6 +813,7 @@ implementation?
 ## R4 &rarr; R5 ## {#R5}
 
 *   Fixed typos in examples.
+*   Added proposed feature test macro.
 
 ## R3 &rarr; R4 ## {#R4}
 
