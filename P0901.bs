@@ -812,6 +812,17 @@ implementation?
 
 ## R4 &rarr; R5 ## {#R5}
 
+EWG reviewed P0901R4 at [[Cologne]].
+
+<blockquote>
+Poll: P0901R4 as presented, forward to LEWG for C++23, *not* C++20.
+
+<table>
+<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
+<tr><td>2</td><td>11</td><td>14</td><td>2</td><td>0</td></tr>
+</table>
+</blockquote>
+
 *   Fixed typos in examples.
 *   Added proposed feature test macro.
 
@@ -854,6 +865,12 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
         "authors": ["Jonathan Wakely", "Chris Kennelly"],
         "date": "2019-06-11",
         "title": "Providing size feedback in the Allocator interface"
+    },
+
+    "Cologne": {
+	"href": "http://wiki.edg.com/bin/view/Wg21cologne2019/P0901R4-EWG",
+	"date": "2019-09-17",
+	"title": "Size feedback in operator new"
     },
 
     "JacksonvilleMinutes": {
