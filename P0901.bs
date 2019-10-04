@@ -1,15 +1,15 @@
 <pre class='metadata'>
 Title: Size feedback in operator new
-Status: P
+Status: D
 Shortname: P0901
 Group: WG21
-Revision: 4
+Revision: 5
 Editor: Andrew Hunter, andrewhhunter@gmail.com
 Editor: Chris Kennelly, Google, ckennelly@google.com
-Date: 2019-06-11
-Audience: EWG
+Date: 2019-10-03
+Audience: EWG, LEWG
 Abstract: Provide access to actual malloc buffer sizes for users.
-URL: http://wg21.link/P0901R4
+URL: http://wg21.link/P0901R5
 Markup Shorthands: markdown yes
 Default Highlight: C++
 </pre>
