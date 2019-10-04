@@ -546,7 +546,7 @@ Another signature we could use would be:
 
 <xmp>
 enum class return_size_t : std::size_t {};
-void* ::operator new(size_t size, std::return_size_t);
+void* ::operator new(size_t size, std::return_size_t&);
 </xmp>
 
 (and so on.)  This is slightly simpler to read as a signature, but arguably
