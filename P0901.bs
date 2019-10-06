@@ -825,6 +825,7 @@ Poll: P0901R4 as presented, forward to LEWG for C++23, *not* C++20.
 
 *   Fixed typos in examples.
 *   Added proposed feature test macro.
+*   Added LEWG audience for library support type names.
 
 ## R3 &rarr; R4 ## {#R4}
 
