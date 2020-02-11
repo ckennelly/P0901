@@ -7,7 +7,7 @@ Revision: 6
 Editor: Andrew Hunter, andrewhhunter@gmail.com
 Editor: Chris Kennelly, Google, ckennelly@google.com
 Date: 2020-02-11
-Audience: EWG, LEWG
+Audience: CWG
 Abstract: Provide access to actual malloc buffer sizes for users.
 URL: http://wg21.link/P0901R6
 Markup Shorthands: markdown yes
