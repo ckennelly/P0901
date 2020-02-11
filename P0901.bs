@@ -199,7 +199,7 @@ An allocation function is a *size-returning allocation function* if it has a
 second parameter of type `std::return_size_t`, or it has a second parameter of
 type `std::align_val_t` and a third parameter of type `std::return_size_t`.
 
-</ins>The return type shall be <ins>`std::sized_ptr_t` if the allocation
+</ins>The return type shall be <ins>`std::sized_allocation_t` if the allocation
 function is a size-returning allocation function and </ins>`void*`<ins>
 otherwise</ins>. The first parameter shall have type `std::size_t`
 ([support.types]).  The first parameter shall not have an associated default
@@ -335,7 +335,7 @@ namespace std {
   inline constexpr return_size_t return_size{};
 
   template&lt;typename T = void&gt;
-  struct std::sized_ptr_t {
+  struct std::sized_allocation_t {
     T *p;
     size_t n;
   };
@@ -353,12 +353,13 @@ namespace std {
                                  const std::nothrow_t&) noexcept;
 
 <ins>
-[[nodiscard]] std::sized_ptr_t ::operator new(size_t size, std::return_size_t);
-[[nodiscard]] std::sized_ptr_t ::operator new(
+[[nodiscard]] std::sized_allocation_t ::operator new(
+        size_t size, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t ::operator new(
 	size_t size, std::align_val_t alignment, std::return_size_t);
-[[nodiscard]] std::sized_ptr_t ::operator new(
+[[nodiscard]] std::sized_allocation_t ::operator new(
 	size_t size, std::return_size_t, std::nothrow_t) noexcept;
-[[nodiscard]] std::sized_ptr_t ::operator new(
+[[nodiscard]] std::sized_allocation_t ::operator new(
 	size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
 </ins>
 [...]
@@ -370,12 +371,13 @@ namespace std {
                                    const std::nothrow_t&) noexcept;
 
 <ins>
-[[nodiscard]] std::sized_ptr_t ::operator new[](size_t size, std::return_size_t);
-[[nodiscard]] std::sized_ptr_t ::operator new[](
+[[nodiscard]] std::sized_allocation_t ::operator new[](
+        size_t size, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t ::operator new[](
 	size_t size, std::align_val_t alignment, std::return_size_t);
-[[nodiscard]] std::sized_ptr_t ::operator new[](
+[[nodiscard]] std::sized_allocation_t ::operator new[](
 	size_t size, std::return_size_t, std::nothrow_t) noexcept;
-[[nodiscard]] std::sized_ptr_t ::operator new[](
+[[nodiscard]] std::sized_allocation_t ::operator new[](
 	size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
 </ins>
 [...]
@@ -391,8 +393,9 @@ void  operator delete[](void* ptr, void*) noexcept;
 <blockquote>
 <ins>
 <pre>
-[[nodiscard]] std::sized_ptr_t ::operator new(size_t size, std::return_size_t);
-[[nodiscard]] std::sized_ptr_t ::operator new(
+[[nodiscard]] std::sized_allocation_t ::operator new(
+        size_t size, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t ::operator new(
 	size_t size, std::align_val_t alignment, std::return_size_t);
 </pre>
 
@@ -402,19 +405,19 @@ void  operator delete[](void* ptr, void*) noexcept;
 *   *Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.
-*   *Required behavior*: Return a sized_ptr_t whose `p` member represents the
+*   *Required behavior*: Return a `sized_allocation_t` whose `p` member represents the
     address of a region of *N* bytes of suitably aligned storage
     ([basic.stc.dynamic]) for some *N* >= `size`, and whose `n` member is *N*,
     or else throw a `bad_alloc` exception.  This requirement is binding on any
     replacement versions of these functions.
-*   *Default behavior*: Returns `std::sized_ptr_t{operator new(size), N}` and
-    `std::sized_ptr_t{operator new(size, alignment), N}` respectively. If a
+*   *Default behavior*: Returns `std::sized_allocation_t{operator new(size), N}` and
+    `std::sized_allocation_t{operator new(size, alignment), N}` respectively. If a
     user-provided operator new is invoked directly or indirectly, N is `size`.
 
 <pre>
-[[nodiscard]] std::sized_ptr_t ::operator new(
+[[nodiscard]] std::sized_allocation_t ::operator new(
 	size_t size, std::return_size_t, std::nothrow_t) noexcept;
-[[nodiscard]] std::sized_ptr_t ::operator new(
+[[nodiscard]] std::sized_allocation_t ::operator new(
 	size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
 </pre>
 
@@ -424,18 +427,18 @@ void  operator delete[](void* ptr, void*) noexcept;
 *   *Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.
-*   *Required behavior*: Return a sized_ptr_t whose `p` member represents the
+*   *Required behavior*: Return a `sized_allocation_t` whose `p` member represents the
     address of a region of *N* bytes of suitably aligned storage
     ([basic.stc.dynamic]) for some *N* >= `size`, and whose `n` member is *N*,
-    or else return `std::sized_ptr_t{nullptr, 0}`.  Each of these nothrow
+    or else return `std::sized_allocation_t{nullptr, 0}`.  Each of these nothrow
     versions of `operator new` returns a pointer obtained as if acquired from
     the (possibly replaced) corresponding non-placement function.  This
     requirement is binding on any replacement versions of these functions.
-*   *Default behavior*: Returns `std::sized_ptr_t{operator new(size), N}` and
-    `std::sized_ptr_t{operator new(size, alignment), N}` respectively. If a
+*   *Default behavior*: Returns `std::sized_allocation_t{operator new(size), N}` and
+    `std::sized_allocation_t{operator new(size, alignment), N}` respectively. If a
     user-provided operator new is invoked directly or indirectly, N is `size`.
     If the call to `operator new` throws, returns
-    `std::sized_ptr_t{nullptr, 0}`.
+    `std::sized_allocation_t{nullptr, 0}`.
 
 </ins>
 <pre>
@@ -453,7 +456,7 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
     returned `ptr`<ins>, if `ptr` was not allocated by a *size-returning
     allocation function*.  If present, the `size` argument shall satisify `n >=
     size >= requested` if `ptr` was allocated by a *size-returning allocation
-    function*, where `n` is the size returned in `std::sized_ptr_t` and
+    function*, where `n` is the size returned in `std::sized_allocation_t` and
     `requested` is the size argument passed to the allocation function</ins>.
 
 [...]
@@ -464,8 +467,9 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
 <blockquote>
 <ins>
 <pre>
-[[nodiscard]] std::sized_ptr_t ::operator new[](size_t size, std::return_size_t);
-[[nodiscard]] std::sized_ptr_t ::operator new[](
+[[nodiscard]] std::sized_allocation_t ::operator new[](
+        size_t size, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t ::operator new[](
 	size_t size, std::align_val_t alignment, std::return_size_t);
 </pre>
 
@@ -475,19 +479,19 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
 *   *Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.
-*   *Required behavior*: Return a sized_ptr_t whose `p` member represents the
+*   *Required behavior*: Return a `sized_allocation_t` whose `p` member represents the
     address of a region of *N* bytes of suitably aligned storage
     ([basic.stc.dynamic]) for some *N* >= `size`, and whose `n` member is *N*,
     or else throw a `bad_alloc` exception.  This requirement is binding on any
     replacement versions of these functions.
-*   *Default behavior*: Returns `std::sized_ptr_t{operator new[](size), N}` and
-    `std::sized_ptr_t{operator new[](size, alignment), N}` respectively. If a
+*   *Default behavior*: Returns `std::sized_allocation_t{operator new[](size), N}` and
+    `std::sized_allocation_t{operator new[](size, alignment), N}` respectively. If a
     user-provided operator new is invoked directly or indirectly, N is `size`.
 
 <pre>
-[[nodiscard]] std::sized_ptr_t ::operator new[](
+[[nodiscard]] std::sized_allocation_t ::operator new[](
 	size_t size, std::return_size_t, std::nothrow_t) noexcept;
-[[nodiscard]] std::sized_ptr_t ::operator new[](
+[[nodiscard]] std::sized_allocation_t ::operator new[](
 	size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
 </pre>
 
@@ -497,15 +501,15 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
 *   *Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.
-*   *Required behavior*: Return a sized_ptr_t whose `p` member represents the
+*   *Required behavior*: Return a `sized_allocation_t` whose `p` member represents the
     address of a region of *N* bytes of suitably aligned storage
     ([basic.stc.dynamic]) for some *N* >= `size`, and whose `n` member is *N*,
-    or else return `std::sized_ptr_t{nullptr, 0}`.  This requirement is binding
+    or else return `std::sized_allocation_t{nullptr, 0}`.  This requirement is binding
     on any replacement versions of these functions.
-*   *Default behavior*: Returns `std::sized_ptr_t{operator new[](size), N}` and
-    `std::sized_ptr_t{operator new[](size, alignment), N}` respectively. If a
+*   *Default behavior*: Returns `std::sized_allocation_t{operator new[](size), N}` and
+    `std::sized_allocation_t{operator new[](size, alignment), N}` respectively. If a
     user-provided operator new is invoked directly or indirectly, N is `size`.
-    If the call to `operator new[]` throws, returns `std::sized_ptr_t{nullptr, 0}`.
+    If the call to `operator new[]` throws, returns `std::sized_allocation_t{nullptr, 0}`.
 
 </ins>
 
@@ -525,7 +529,7 @@ void operator delete[](void* ptr, std::size_t size, std::align_val_t alignment) 
     returned `ptr`<ins>, if `ptr` was not allocated by a *size-returning
     allocation function*.  If present, the `size` argument shall satisify `n >=
     size >= requested` if `ptr` was allocated by a *size-returning allocation
-    function*, where `n` is the size returned in `std::sized_ptr_t` and
+    function*, where `n` is the size returned in `std::sized_allocation_t` and
     `requested` is the size argument passed to the allocation function</ins>.
 
 [...]
@@ -611,7 +615,7 @@ It's worth reiterating that there's a perfectly good trivial implementation of t
 functions:
 
 <xmp>
-std::sized_ptr_t ::operator new(size_t n, std::return_size_t) {
+std::sized_allocation_t ::operator new(size_t n, std::return_size_t) {
   return {::operator new(n), n};
 }
 </xmp>
@@ -631,7 +635,7 @@ Implementation Experience:
 
 ## Interaction with Sized Delete ## {#sizeddelete}
 
-For allocations made with `sized_ptr_t`-returning `::operator new`, we need to
+For allocations made with `sized_allocation_t`-returning `::operator new`, we need to
 relax `::operator delete`'s size argument (16.6.2.1 and 16.6.2.2).  For
 allocations of `T`, the size quanta used by the allocator may not be a multiple
 of `sizeof(T)`, leading to both the original and returned sizes being
@@ -859,6 +863,11 @@ LEWG additionally polled on whether the type should have a `_t` suffix.
 <tr><td>0</td><td>6</td><td>7</td><td>8</td><td>1</td></tr>
 </table>
 </blockquote>
+
+Based on this feedback, the authors have chosen `sized_allocation_t`, based on
+LEWG's naming suggestions and for consistency (in choice of `_t`) with the
+other allocation library support types (`size_t`, `align_val_t`, `nothrow_t`,
+etc.).  We expect this to be spelled rarely.
 
 ## R4 &rarr; R5 ## {#R5}
 
