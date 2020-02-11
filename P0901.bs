@@ -810,6 +810,56 @@ implementation?
 
 # History # {#history}
 
+## R5 &rarr; R6 ## {#R6}
+
+LEWG reviewed [[P0901R5]] library support types at [[Prague]].
+
+*   LEWG discussed the similarity to `std::span`.  Participants in the
+    discussion were concerned about the potential library layering issue
+    (`<new>` layers below practically everything) and that ownership is
+    conveyed in the return value.  In contrast, `std::span` is non-owning.
+*   LEWG discussed whether the type needed a name.  It neds to be named to
+    allow users to replace `operator new` and spell the type.
+
+LEWG took an approval poll of different names
+
+<blockquote>
+<table>
+<tr><td>5</td><td>`sized_ptr_t`</td></tr>
+<tr><td>2</td><td>`sized_ptr`</td></tr>
+<tr><td>3</td><td>`memblock_t`</td></tr>
+<tr><td>7</td><td>`memblock`</td></tr>
+<tr><td>0</td><td>`memspan_t`</td></tr>
+<tr><td>2</td><td>`memspan`</td></tr>
+<tr><td>8</td><td>`alloc_size_t`</td></tr>
+<tr><td>4</td><td>`alloc_size`</td></tr>
+<tr><td>5</td><td>`alloc_t`</td></tr>
+<tr><td>0</td><td>`alloc`</td></tr>
+<tr><td>13</td><td>`sized_allocation_t`</td></tr>
+<tr><td>17</td><td>`sized_allocation`</td></tr>
+<tr><td>0</td><td>`alloc_span_t`</td></tr>
+<tr><td>2</td><td>`alloc_span`</td></tr>
+<tr><td>9</td><td>`allocation_t`</td></tr>
+<tr><td>9</td><td>`allocation`</td></tr>
+<tr><td>16</td><td>`alloc_result_t`</td></tr>
+<tr><td>14</td><td>`alloc_result`</td></tr>
+<tr><td>12</td><td>`allocation_result_t`</td></tr>
+<tr><td>16</td><td>`allocation_result`</td></tr>
+</table>
+</blockquote>
+
+Based on this poll, LEWG directed the paper authors to consider
+`sized_allocation`, `alloc_result_t`, and `allocation_result`.
+
+LEWG additionally polled on whether the type should have a `_t` suffix.
+
+<blockquote>
+<table>
+<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
+<tr><td>0</td><td>6</td><td>7</td><td>8</td><td>1</td></tr>
+</table>
+</blockquote>
+
 ## R4 &rarr; R5 ## {#R5}
 
 EWG reviewed P0901R4 at [[Cologne]].
@@ -907,6 +957,18 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
         "title": "Extensions to the Allocator interface",
         "date": "2015-07-08",
         "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0401r0.html"
+    },
+
+    "P0901R5": {
+        "title": "Size feedback in operator new",
+        "date": "2019-10-06",
+        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0901r5.html"
+    },
+
+    "Prague": {
+        "title": "LEWG Prague Minutes for P901R5",
+        "date": "2020-02-10",
+        "href": "http://wiki.edg.com/bin/view/Wg21prague/P0901"
     },
 
     "SizedDelete": {
