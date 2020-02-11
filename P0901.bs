@@ -100,7 +100,7 @@ running example, malloc normally knows that the user wants 37 bytes (then 38),
 but with `nallocx`, we will only ever be told that they want 40 (or 48, or
 whatever `nallocx(37)` returns.)
 
-Google's malloc implementation (TCMalloc) rounds requests to one of a small
+Google's malloc implementation ([TCMalloc]) rounds requests to one of a small
 (<100) number of *sizeclasses*: we maintain local caches of appropriately sized
 objects, and cannot do this for every possible size of object.  Originally,
 these sizeclasses were just reasonably evenly spaced among the range they
@@ -625,11 +625,11 @@ definition, but this paper poses no significant difficulty for toolchain
 implementers.
 
 Implementation Experience:
-*   TCMalloc has developed a (currently internal) implementation.  While this
-    requires mapping from an integer size class to the true number of bytes,
-    combining this lookup with the allocation is more efficient as we avoid
-    recomputing the sizeclass itself (given a request) or deriving it from the
-    object's address.
+*   TCMalloc has developed an implementation opensourced on Github
+    ([MallocExtension]).  While this requires mapping from an integer size
+    class to the true number of bytes, combining this lookup with the
+    allocation is more efficient as we avoid recomputing the sizeclass itself
+    (given a request) or deriving it from the object's address.
 *   jemalloc is prototyping a `smallocx` function providing a C API for this
     functionality [[smallocx]].
 
@@ -944,6 +944,11 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
         "href": "http://jemalloc.net/jemalloc.3.html"
     },
 
+    "MallocExtension": {
+        "href": "https://github.com/google/tcmalloc/blob/master/tcmalloc/malloc_extension.h",
+        "title": "TCMalloc Malloc Extensions"
+    },
+
     "MicrosoftABI": {
         "title": "Return Values",
         "href": "https://docs.microsoft.com/en-us/cpp/build/return-values-cpp",
@@ -989,6 +994,11 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
     "smallocx": {
         "href": "https://github.com/jemalloc/jemalloc/pull/1270",
         "title": "Add experimental API to support P0901r0"
+    },
+
+    "TCMalloc": {
+        "href": "https://github.com/google/tcmalloc",
+        "title": "TCMalloc"
     }
 }
 </pre>
