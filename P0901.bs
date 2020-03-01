@@ -100,7 +100,7 @@ running example, malloc normally knows that the user wants 37 bytes (then 38),
 but with `nallocx`, we will only ever be told that they want 40 (or 48, or
 whatever `nallocx(37)` returns.)
 
-Google's malloc implementation ([TCMalloc]) rounds requests to one of a small
+Google's malloc implementation ([[TCMalloc]]) rounds requests to one of a small
 (<100) number of *sizeclasses*: we maintain local caches of appropriately sized
 objects, and cannot do this for every possible size of object.  Originally,
 these sizeclasses were just reasonably evenly spaced among the range they
@@ -626,7 +626,7 @@ implementers.
 
 Implementation Experience:
 *   TCMalloc has developed an implementation opensourced on GitHub
-    ([MallocExtension]).  While this requires mapping from an integer size
+    ([[MallocExtension]]).  While this requires mapping from an integer size
     class to the true number of bytes, combining this lookup with the
     allocation is more efficient as we avoid recomputing the sizeclass itself
     (given a request) or deriving it from the object's address.
