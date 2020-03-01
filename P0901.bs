@@ -625,7 +625,7 @@ definition, but this paper poses no significant difficulty for toolchain
 implementers.
 
 Implementation Experience:
-*   TCMalloc has developed an implementation opensourced on Github
+*   TCMalloc has developed an implementation opensourced on GitHub
     ([MallocExtension]).  While this requires mapping from an integer size
     class to the true number of bytes, combining this lookup with the
     allocation is more efficient as we avoid recomputing the sizeclass itself
@@ -822,7 +822,7 @@ LEWG reviewed [[P0901R5]] library support types at [[Prague]].
     discussion were concerned about the potential library layering issue
     (`<new>` layers below practically everything) and that ownership is
     conveyed in the return value.  In contrast, `std::span` is non-owning.
-*   LEWG discussed whether the type needed a name.  It neds to be named to
+*   LEWG discussed whether the type needed a name.  It needs to be named to
     allow users to replace `operator new` and spell the type.
 
 LEWG took an approval poll of different names
