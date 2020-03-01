@@ -1230,7 +1230,7 @@ Possible extra rowspan handling
   <meta content="Bikeshed version 9c7b3c1bf4afcf8eca4fd3a1529a298ee35be006" name="generator">
   <link href="http://wg21.link/P0901R6" rel="canonical">
   <link href="https://isocpp.org/favicon.ico" rel="icon">
-  <meta content="34abf68bc7ecb8bf2d64c2fe86931841584eaab7" name="document-revision">
+  <meta content="929164e248f40114aca0b603084b2478d0e01c9e" name="document-revision">
 <style>/* style-md-lists */
 
 /* This is a weird hack for me not yet following the commonmark spec
@@ -1541,9 +1541,8 @@ byte, and explores many of the design choices (not all of which are obvious
 without implementation experience.)</p>
    <h3 class="heading settled" data-level="1.1" id="nallocx"><span class="secno">1.1. </span><span class="content">nallocx: not as awesome as it looks</span><a class="self-link" href="#nallocx"></a></h3>
    <p>The simplest way to help here is to provide an informative API answering the
-question "If I ask for N bytes, how many do I actually get?" <a data-link-type="biblio" href="#biblio-jemalloc">[jemalloc]</a> calls
-this <code class="highlight"><c- n>nallocx</c-></code>.  We can then use that hint as a smarter parameter for operator
-new:</p>
+question "If I ask for N bytes, how many do I actually get?" <a data-link-type="biblio" href="#biblio-jemalloc">[jemalloc]</a> and <a data-link-type="biblio" href="#biblio-tcmalloc">[TCMalloc]</a> call this <code class="highlight"><c- n>nallocx</c-></code>.  We can then use that hint as a smarter
+parameter for operator new:</p>
 <pre class="highlight"><c- b>void</c-> <c- n>vector</c-><c- o>::</c-><c- n>reserve</c-><c- p>(</c-><c- b>size_t</c-> <c- n>new_cap</c-><c- p>)</c-> <c- p>{</c->
   <c- k>if</c-> <c- p>(</c-><c- n>capacity_</c-> <c- o>>=</c-> <c- n>new_cap</c-><c- p>)</c-> <c- k>return</c-><c- p>;</c->
   <c- k>const</c-> <c- b>size_t</c-> <c- n>bytes</c-> <c- o>=</c-> <c- n>nallocx</c-><c- p>(</c-><c- n>new_cap</c-><c- p>,</c-> <c- mi>0</c-><c- p>);</c->
@@ -1573,7 +1572,7 @@ malloc finds valuable (the user’s intended allocation size.)  That is: in our
 running example, malloc normally knows that the user wants 37 bytes (then 38),
 but with <code class="highlight"><c- n>nallocx</c-></code>, we will only ever be told that they want 40 (or 48, or
 whatever <code class="highlight"><c- n>nallocx</c-><c- p>(</c-><c- mi>37</c-><c- p>)</c-></code> returns.)</p>
-   <p>Google’s malloc implementation ([TCMalloc]) rounds requests to one of a small
+   <p>Google’s malloc implementation (<a data-link-type="biblio" href="#biblio-tcmalloc">[TCMalloc]</a>) rounds requests to one of a small
 (&lt;100) number of <em>sizeclasses</em>: we maintain local caches of appropriately sized
 objects, and cannot do this for every possible size of object.  Originally,
 these sizeclasses were just reasonably evenly spaced among the range they
@@ -2094,7 +2093,7 @@ implementers.</p>
    <ul>
     <li data-md>
      <p>TCMalloc has developed an implementation opensourced on GitHub
-([MallocExtension]).  While this requires mapping from an integer size
+(<a data-link-type="biblio" href="#biblio-mallocextension">[MallocExtension]</a>).  While this requires mapping from an integer size
 class to the true number of bytes, combining this lookup with the
 allocation is more efficient as we avoid recomputing the sizeclass itself
 (given a request) or deriving it from the object’s address.</p>
@@ -2571,6 +2570,8 @@ with the existing <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k
    <dd><a href="http://wiki.edg.com/bin/view/Wg21jacksonville2018/P0901R0-Jax18">Jacksonville 2018 minutes</a>. 2018-03-15. URL: <a href="http://wiki.edg.com/bin/view/Wg21jacksonville2018/P0901R0-Jax18">http://wiki.edg.com/bin/view/Wg21jacksonville2018/P0901R0-Jax18</a>
    <dt id="biblio-jemalloc">[JEMALLOC]
    <dd><a href="http://jemalloc.net/jemalloc.3.html">jemalloc(3) - Linux man page</a>. URL: <a href="http://jemalloc.net/jemalloc.3.html">http://jemalloc.net/jemalloc.3.html</a>
+   <dt id="biblio-mallocextension">[MallocExtension]
+   <dd><a href="https://github.com/google/tcmalloc/blob/master/tcmalloc/malloc_extension.h">TCMalloc Malloc Extensions</a>. URL: <a href="https://github.com/google/tcmalloc/blob/master/tcmalloc/malloc_extension.h">https://github.com/google/tcmalloc/blob/master/tcmalloc/malloc_extension.h</a>
    <dt id="biblio-microsoftabi">[MicrosoftABI]
    <dd><a href="https://docs.microsoft.com/en-us/cpp/build/return-values-cpp">Return Values</a>. 2016-11-03. URL: <a href="https://docs.microsoft.com/en-us/cpp/build/return-values-cpp">https://docs.microsoft.com/en-us/cpp/build/return-values-cpp</a>
    <dt id="biblio-n4791">[N4791]
@@ -2585,4 +2586,6 @@ with the existing <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k
    <dd>L; et al. <a href="http://wg21.link/n3536">C++ Sized Deallocation</a>. URL: <a href="http://wg21.link/n3536">http://wg21.link/n3536</a>
    <dt id="biblio-smallocx">[SMALLOCX]
    <dd><a href="https://github.com/jemalloc/jemalloc/pull/1270">Add experimental API to support P0901r0</a>. URL: <a href="https://github.com/jemalloc/jemalloc/pull/1270">https://github.com/jemalloc/jemalloc/pull/1270</a>
+   <dt id="biblio-tcmalloc">[TCMalloc]
+   <dd><a href="https://github.com/google/tcmalloc">TCMalloc</a>. URL: <a href="https://github.com/google/tcmalloc">https://github.com/google/tcmalloc</a>
   </dl>
