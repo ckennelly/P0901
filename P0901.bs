@@ -58,9 +58,9 @@ without implementation experience.)
 ## nallocx: not as awesome as it looks## {#nallocx}
 
 The simplest way to help here is to provide an informative API answering the
-question "If I ask for N bytes, how many do I actually get?"  [[jemalloc]] calls
-this `nallocx`.  We can then use that hint as a smarter parameter for operator
-new:
+question "If I ask for N bytes, how many do I actually get?"  [[jemalloc]] and
+[[TCMalloc]] call this `nallocx`.  We can then use that hint as a smarter
+parameter for operator new:
 
 <xmp>
 void vector::reserve(size_t new_cap) {
