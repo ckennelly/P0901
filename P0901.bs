@@ -335,7 +335,7 @@ namespace std {
   inline constexpr return_size_t return_size{};
 
   template&lt;typename T = void&gt;
-  struct std::sized_allocation_t {
+  struct sized_allocation_t {
     T *p;
     size_t n;
   };
@@ -813,6 +813,10 @@ requested feedback in a way that would work with any underlying malloc
 implementation?
 
 # History # {#history}
+
+## R6 &rarr; R7 ## {#R6}
+
+*   Removed extraneous `std::` typo
 
 ## R5 &rarr; R6 ## {#R6}
 
