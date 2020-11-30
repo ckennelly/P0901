@@ -217,7 +217,7 @@ necessarily restricted to the scope in which it is created. — end note ]
 When the allocated object is not an array, the result of the new-expression is
 
 *   <ins>if the new-expression is a size-returning placement new expression (see
-    below), an object of type `std::return_size_t` ([new.syn]) whose `ptr`
+    below), an object of type `std::sized_allocation_t` ([new.syn]) whose `ptr`
     member points to the object created and whose `bytes` member is the `bytes`
     member of the value returned by the size-returning allocation
     function;</ins>
@@ -232,7 +232,7 @@ When the allocated object is an array (that is, the *noptr-new-declarator*
 syntax is used or the *new-type-id* or *type-id* denotes an array type), the
 *new-expression* yields
 *   <ins>if the new-expression is a size-returning placement new expression (see
-    below), an object of type `std::return_size_t` ([new.syn]) whose `ptr`
+    below), an object of type `std::sized_allocation_t` ([new.syn]) whose `ptr`
     member points to the object created and whose `bytes` member is the `bytes`
     member of the value returned by the size-returning allocation function less
     any array allocation overhead;</ins>
