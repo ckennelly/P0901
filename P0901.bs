@@ -593,7 +593,7 @@ It is unfortunate that we have so many permutations of `::operator new`--eight
 seems like far more than we should really need!  But there really isn't any
 significant runtime cost for having them.  Use of raw calls to `::operator new`
 is relatively rare:  It's a *building block* for low-level libraries, allocators
-([[P0401R1]]), and so on, so the cognitive burden on C++ users is low.
+([[P0401R4]]), and so on, so the cognitive burden on C++ users is low.
 
 The authors have considered other alternatives to the additional overloads.  At
 the Jacksonville meeting, EWG suggested looking at parameter packs.
@@ -811,7 +811,7 @@ For `new[]` expressions, we considered alternatively initializing the returned
 
 # Related work # {#rel}
 
-[[P0401R1]] considers this problem at the level of the `Allocator` concept.
+[[P0401R4]] considers this problem at the level of the `Allocator` concept.
 Ironically, the lack of the above API was one significant problem in its
 original revision: how could an implementation of `std::allocator` provide the
 requested feedback in a way that would work with any underlying malloc
@@ -835,6 +835,8 @@ Poll: Send P0901R6, after changing `p` to `ptr` and `n` to `bytes` in
 
 *   Applied member name feedback from LEWG to rename `sized_allocation_t`'s
     members from `p` to `ptr` and `n` to `bytes`.
+*   Update reference to revised [[P0401R4]].
+
 ## R6 &rarr; R7 ## {#R6}
 
 *   Removed extraneous `std::` typo
@@ -949,6 +951,13 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
         "href": "http://wg21.link/P0401R1",
         "authors": ["Jonathan Wakely", "Chris Kennelly"],
         "date": "2019-06-11",
+        "title": "Providing size feedback in the Allocator interface"
+    },
+
+    "P0401R4": {
+        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0401r4.html",
+        "authors": ["Jonathan Wakely", "Chris Kennelly"],
+        "date": "2020-11-14",
         "title": "Providing size feedback in the Allocator interface"
     },
 
