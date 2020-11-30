@@ -186,9 +186,9 @@ functions) that directly inform the user of the size available to them.  C++
 makes `::operator new` replaceable (15.5.4.6), allowing a program to provide
 its own version different from the standard library's implementation.
 
-We propose wording, relative to [[N4791]]:
+We propose wording, relative to [[N4868]]:
 
-* Amend [basic.stc.dynamic.allocation] (6.6.5.4.1) paragraph 1:
+* Amend [basic.stc.dynamic.allocation]:
 
 <blockquote>
 An allocation function shall be a class member function or a global function; a
@@ -207,7 +207,7 @@ argument ([dcl.fct.default]).  The value of the first parameter is interpreted
 as the requested size of the allocation. [...]
 </blockquote>
 
-* Amend [expr.new] (7.6.2.4) paragraph 5:
+* Amend [expr.new]:
 
 <blockquote>
 Objects created by a *new-expression* have dynamic storage duration
@@ -225,7 +225,7 @@ When the allocated object is not an array, the result of the new-expression is
 
 </blockquote>
 
-* Amend [expr.new] (7.6.2.4) paragraph 6:
+* Amend [expr.new]:
 
 <blockquote>
 When the allocated object is an array (that is, the *noptr-new-declarator*
@@ -243,7 +243,7 @@ int[i][10]` is `int (*)[10]` — end note ] The *attribute-specifier-seq* in
 *noptr-new-declarator* appertains to the associated array type.
 </blockquote>
 
-* Amend [expr.new] (7.6.2.4) paragraph 15:
+* Amend [expr.new]:
 
 <blockquote>
 Overload resolution is performed on a function call created by assembling an
@@ -262,7 +262,7 @@ function is a *size-returning allocation function*.
 </ins>
 </blockquote>
 
-* Amend [expr.new] (7.6.2.4) paragraph 25:
+* Amend [expr.new]:
 
 <blockquote>
 If a *new-expression* calls a deallocation function, it passes
@@ -317,7 +317,7 @@ operator new[](size_t size, std::align_val_t al, std::return_size_t, std::nothro
 
 </pre>
 
-* Amend header `<new>` synopsis in [new.syn] (16.6.1):
+* Amend header `<new>` synopsis in [new.syn]:
 
 <pre>
 namespace std {
@@ -330,6 +330,7 @@ namespace std {
   inline constexpr destroying_delete_t destroying_delete{};
 
 <ins>
+  // global operator new control
   struct return_size_t {
     explicit return_size_t() = default;
   };
@@ -999,6 +1000,12 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
         "title": "Working Draft, Standard for Programming Language C++",
         "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4791.pdf",
         "date": "2018-12-07"
+    },
+
+    "N4868": {
+        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/n4868.pdf",
+	"date": "2020-10-18",
+	"title": "Working Draft, Standard for Programming Language C++"
     },
 
     "P0401": {
