@@ -217,9 +217,10 @@ necessarily restricted to the scope in which it is created. — end note ]
 When the allocated object is not an array, the result of the new-expression is
 
 *   <ins>if the new-expression is a size-returning placement new expression (see
-    below), an object of type `std::return_size_t` ([new.syn]) whose `p`
-    member points to the object created and whose `n` member is the `n` member
-    of the value returned by the size-returning allocation function;</ins>
+    below), an object of type `std::return_size_t` ([new.syn]) whose `ptr`
+    member points to the object created and whose `bytes` member is the `bytes`
+    member of the value returned by the size-returning allocation
+    function;</ins>
 *   <ins>otherwise,</ins> a pointer to the object created.
 
 </blockquote>
@@ -231,10 +232,10 @@ When the allocated object is an array (that is, the *noptr-new-declarator*
 syntax is used or the *new-type-id* or *type-id* denotes an array type), the
 *new-expression* yields
 *   <ins>if the new-expression is a size-returning placement new expression (see
-    below), an object of type `std::return_size_t` ([new.syn]) whose `p`
-    member points to the object created and whose `n` member is the `n` member
-    of the value returned by the size-returning allocation function less any
-    array allocation overhead;</ins>
+    below), an object of type `std::return_size_t` ([new.syn]) whose `ptr`
+    member points to the object created and whose `bytes` member is the `bytes`
+    member of the value returned by the size-returning allocation function less
+    any array allocation overhead;</ins>
 *   <ins>otherwise,</ins> a pointer to the initial element (if any) of the array.
 
 [ Note: Both `new int` and `new int[10]` have type `int*` and the type of `new
@@ -266,7 +267,8 @@ function is a *size-returning allocation function*.
 <blockquote>
 If a *new-expression* calls a deallocation function, it passes
 
-*   <ins>the `p` member of the object returned by the *size-returning allocation function*;</ins>
+*   <ins>the `ptr` member of the object returned by the *size-returning
+    allocation function*;</ins>
 *   <ins>otherwise,</ins>the value returned from the allocation function call
 
 as the first argument of type `void*`. If a placement deallocation
@@ -336,8 +338,8 @@ namespace std {
 
   template&lt;typename T = void&gt;
   struct sized_allocation_t {
-    T *p;
-    size_t n;
+    T *ptr;
+    size_t bytes;
   };
 </ins>
 
@@ -405,11 +407,12 @@ void  operator delete[](void* ptr, void*) noexcept;
 *   *Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.
-*   *Required behavior*: Return a `sized_allocation_t` whose `p` member represents the
+*   *Required behavior*: Return a `sized_allocation_t` whose `ptr` member
+*   represents the
     address of a region of *N* bytes of suitably aligned storage
-    ([basic.stc.dynamic]) for some *N* >= `size`, and whose `n` member is *N*,
-    or else throw a `bad_alloc` exception.  This requirement is binding on any
-    replacement versions of these functions.
+    ([basic.stc.dynamic]) for some *N* >= `size`, and whose `bytes` member is
+    *N*, or else throw a `bad_alloc` exception.  This requirement is binding on
+    any replacement versions of these functions.
 *   *Default behavior*: Returns `std::sized_allocation_t{operator new(size), N}` and
     `std::sized_allocation_t{operator new(size, alignment), N}` respectively. If a
     user-provided operator new is invoked directly or indirectly, N is `size`.
@@ -427,9 +430,9 @@ void  operator delete[](void* ptr, void*) noexcept;
 *   *Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.
-*   *Required behavior*: Return a `sized_allocation_t` whose `p` member represents the
+*   *Required behavior*: Return a `sized_allocation_t` whose `ptr` member represents the
     address of a region of *N* bytes of suitably aligned storage
-    ([basic.stc.dynamic]) for some *N* >= `size`, and whose `n` member is *N*,
+    ([basic.stc.dynamic]) for some *N* >= `size`, and whose `bytes` member is *N*,
     or else return `std::sized_allocation_t{nullptr, 0}`.  Each of these nothrow
     versions of `operator new` returns a pointer obtained as if acquired from
     the (possibly replaced) corresponding non-placement function.  This
@@ -454,10 +457,11 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
     to the allocation function that returned `ptr`. If present, the `size` argument
     shall equal the `size` argument passed to the allocation function that
     returned `ptr`<ins>, if `ptr` was not allocated by a *size-returning
-    allocation function*.  If present, the `size` argument shall satisify `n >=
+    allocation function*.  If present, the `size` argument shall satisify `bytes >=
     size >= requested` if `ptr` was allocated by a *size-returning allocation
-    function*, where `n` is the size returned in `std::sized_allocation_t` and
-    `requested` is the size argument passed to the allocation function</ins>.
+    function*, where `bytes` is the size returned in `std::sized_allocation_t`
+    and `requested` is the size argument passed to the allocation
+    function</ins>.
 
 [...]
 </blockquote>
@@ -479,11 +483,11 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
 *   *Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.
-*   *Required behavior*: Return a `sized_allocation_t` whose `p` member represents the
-    address of a region of *N* bytes of suitably aligned storage
-    ([basic.stc.dynamic]) for some *N* >= `size`, and whose `n` member is *N*,
-    or else throw a `bad_alloc` exception.  This requirement is binding on any
-    replacement versions of these functions.
+*   *Required behavior*: Return a `sized_allocation_t` whose `ptr` member
+    represents the address of a region of *N* bytes of suitably aligned storage
+    ([basic.stc.dynamic]) for some *N* >= `size`, and whose `bytes` member is
+    *N*, or else throw a `bad_alloc` exception.  This requirement is binding on
+    any replacement versions of these functions.
 *   *Default behavior*: Returns `std::sized_allocation_t{operator new[](size), N}` and
     `std::sized_allocation_t{operator new[](size, alignment), N}` respectively. If a
     user-provided operator new is invoked directly or indirectly, N is `size`.
@@ -501,9 +505,9 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
 *   *Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.
-*   *Required behavior*: Return a `sized_allocation_t` whose `p` member represents the
+*   *Required behavior*: Return a `sized_allocation_t` whose `ptr` member represents the
     address of a region of *N* bytes of suitably aligned storage
-    ([basic.stc.dynamic]) for some *N* >= `size`, and whose `n` member is *N*,
+    ([basic.stc.dynamic]) for some *N* >= `size`, and whose `bytes` member is *N*,
     or else return `std::sized_allocation_t{nullptr, 0}`.  This requirement is binding
     on any replacement versions of these functions.
 *   *Default behavior*: Returns `std::sized_allocation_t{operator new[](size), N}` and
@@ -527,10 +531,11 @@ void operator delete[](void* ptr, std::size_t size, std::align_val_t alignment) 
     to the allocation function that returned `ptr`. If present, the `size` argument
     shall equal the `size` argument passed to the allocation function that
     returned `ptr`<ins>, if `ptr` was not allocated by a *size-returning
-    allocation function*.  If present, the `size` argument shall satisify `n >=
+    allocation function*.  If present, the `size` argument shall satisify `bytes >=
     size >= requested` if `ptr` was allocated by a *size-returning allocation
-    function*, where `n` is the size returned in `std::sized_allocation_t` and
-    `requested` is the size argument passed to the allocation function</ins>.
+    function*, where `bytes` is the size returned in `std::sized_allocation_t`
+    and `requested` is the size argument passed to the allocation
+    function</ins>.
 
 [...]
 </blockquote>
@@ -814,6 +819,22 @@ implementation?
 
 # History # {#history}
 
+## R7 &rarr; R8 ## {#R7}
+
+LEWG reviewed [[P0901R6]] via telecon.
+
+<blockquote>
+Poll: Send P0901R6, after changing `p` to `ptr` and `n` to `bytes` in
+`sized_allocation_t`, to electronic ballot to be forwarded to CWG.
+
+<table>
+<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
+<tr><td>4</td><td>11</td><td>0</td><td>0</td><td>0</td></tr>
+</table>
+</blockquote>
+
+*   Applied member name feedback from LEWG to rename `sized_allocation_t`'s
+    members from `p` to `ptr` and `n` to `bytes`.
 ## R6 &rarr; R7 ## {#R6}
 
 *   Removed extraneous `std::` typo
@@ -981,6 +1002,12 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
         "title": "Size feedback in operator new",
         "date": "2019-10-06",
         "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0901r5.html"
+    },
+
+    "P0901R6": {
+        "title": "Size feedback in operator new",
+        "date": "2020-03-01",
+        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0901r6.html"
     },
 
     "Prague": {
