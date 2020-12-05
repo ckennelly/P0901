@@ -867,6 +867,20 @@ For `new[]` expressions, we considered alternatively initializing the returned
 *   The presented proposal (leaving this space uninitialized) was chosen for
     consistency with `new`.
 
+# Naming # {#naming}
+
+The library support type is named  `sized_allocation_t`, based on
+LEWG's naming suggestions and for consistency (in choice of `_t`) with the
+other allocation library support types (`size_t`, `align_val_t`, `nothrow_t`,
+etc.).  We expect this to be spelled rarely.
+
+Its members are `ptr` and `bytes`.  `ptr` for the memory returned is an
+intuitive name.  `bytes` conveys units in its name (`bytes`).  Since new
+expressions can return additional storage under this proposal, this
+distinguishes it from returning the amount of storage available for *whole*
+objects.  This contrasts with [[P0401R4]], which does return storage for whole
+objects and whose support type's field is named `count`.
+
 # Related work # {#rel}
 
 [[P0401R4]] considers this problem at the level of the `Allocator` concept.
@@ -892,7 +906,7 @@ Poll: Send P0901R6, after changing `p` to `ptr` and `n` to `bytes` in
 </blockquote>
 
 *   Applied member name feedback from LEWG to rename `sized_allocation_t`'s
-    members from `p` to `ptr` and `n` to `bytes`.
+    members from `p` to `ptr` and `n` to `bytes`.  Added naming rationale section.
 *   Update reference to revised [[P0401R4]].
 *   Refined wording in proposal.
 
