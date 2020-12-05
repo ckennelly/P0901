@@ -910,7 +910,7 @@ Poll: Send P0901R6, after changing `p` to `ptr` and `n` to `bytes` in
 *   Update reference to revised [[P0401R4]].
 *   Refined wording in proposal.
 
-## R6 &rarr; R7 ## {#R6}
+## R6 &rarr; R7 ## {#R7}
 
 *   Removed extraneous `std::` typo
 
