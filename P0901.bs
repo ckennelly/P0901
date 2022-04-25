@@ -186,135 +186,231 @@ functions) that directly inform the user of the size available to them.  C++
 makes `::operator new` replaceable (15.5.4.6), allowing a program to provide
 its own version different from the standard library's implementation.
 
-We propose wording, relative to [[N4868]]:
+We propose wording, relative to [[CppDraft]]:
 
 * Amend [basic.stc.dynamic.allocation], paragraph 1:
 
 <blockquote>
-An allocation function shall be a class member function or a global function; a
-program is ill-formed if an allocation function is declared in a namespace
-scope other than global scope or declared static in global scope.
-<ins>An allocation function is a *size-returning allocation function* if it has a
-second parameter of type `std::return_size_t`, or it has a second parameter of
-type `std::align_val_t` and a third parameter of type `std::return_size_t`.</ins>
-The return type shall be <ins>`std::sized_allocation_t<void>` if the
-allocation function is a size-returning allocation function and
-</ins>`void*`<ins> otherwise</ins>. The first parameter shall have type
-`std::size_t` ([support.types]).  The first parameter shall not have an
-associated default argument ([dcl.fct.default]).  The value of the first
-parameter is interpreted as the requested size of the allocation. [...]
+The library provides default definitions for the global allocation and deallocation functions.
+Some global allocation and deallocation functions are replaceable ([new.delete]).
+A C++ program shall provide at most one definition of a replaceable allocation or deallocation function.
+Any such function definition replaces the default version provided in the library ([replacement.functions]).
+The following allocation and deallocation functions ([support.dynamic]) are implicitly declared in global scope in each translation unit of a program.
+
+<pre>
+  [[nodiscard]] void* operator new(std::size_t);
+  [[nodiscard]] void* operator new(std::size_t, std::align_val_t);
+  <ins>[[nodiscard]] std::sized_allocation_t<void> operator new(std::size_t, 
+      std::return_size_t);</ins>
+  <ins>[[nodiscard]] std::sized_allocation_t<void> operator new(std::size_t, std::align_val_t, 
+      std::return_size_t);</ins>
+  
+  void operator delete(void*) noexcept;
+  void operator delete(void*, std::size_t) noexcept;
+  void operator delete(void*, std::align_val_t) noexcept;
+  void operator delete(void*, std::size_t, std::align_val_t) noexcept;
+  
+  [[nodiscard]] void* operator new[](std::size_t);
+  [[nodiscard]] void* operator new[](std::size_t, std::align_val_t);
+  <ins>[[nodiscard]] std::sized_allocation_t<void> operator new[](std::size_t,
+      std::return_size_t);</ins>
+  <ins>[[nodiscard]] std::sized_allocation_t<void> operator new[](std::size_t, std::align_val_t,
+      std::return_size_t);</ins>
+
+  void operator delete[](void*) noexcept;
+  void operator delete[](void*, std::size_t) noexcept;
+  void operator delete[](void*, std::align_val_t) noexcept;
+  void operator delete[](void*, std::size_t, std::align_val_t) noexcept;
+</pre>
+
+These implicit declarations introduce only the function names `operator new`, `operator new[]`, `operator delete`, and `operator delete[]`.
+
+[ Note 2: The implicit declarations do not introduce the names `std`, `std::size_t`, `std::align_val_t`<ins>, `std::return_size_t`</ins> or any other names that the library uses to declare these names.
+Thus, a *new-expression*, *delete-expression*, or function call that refers to one of these functions without importing or including the header `<new>` is well-formed.
+However, referring to `std` or `std::size_t` or `std::align_val_t`<ins> or `std::return_size_t`</ins> is ill-formed unless the name has been declared by importing or including the appropriate header.
+— end note ]
+
+Allocation and/or deallocation functions may also be declared and defined for any class ([class.free]).
+
 </blockquote>
 
-* Amend [expr.new], paragraph 5:
+* Amend [basic.stc.dynamic.allocation], paragraph 1:
 
 <blockquote>
-Objects created by a *new-expression* have dynamic storage duration
-([basic.stc.dynamic]). [ Note: The lifetime of such an object is not
-necessarily restricted to the scope in which it is created. — end note ]
-
-When the allocated object is not an array, the <del>result of the
-new-expression</del> <ins>*resulting pointer value*</ins> is a pointer to the
-object created.
-
-*   <ins>if the new-expression is a size-returning placement new expression
-    (see below), an object of type `std::sized_allocation_t<T>`
-    ([new.syn]) and whose `ptr` member points to the object created and whose
-    `bytes` member satisfies <math>*requested* <= *bytes* <= *returned*</math>
-    where <math>*requested* = `sizeof(T)`</math> and *returned* is the `bytes`
-    member of the value returned by the size-returning allocation
-    function;</ins>
-*   <ins>otherwise,</ins> a pointer to the object created.
-
+An allocation function that is not a class member function shall belong to the global scope and not have a name with internal linkage.
+<ins>An allocation function is a *size-returning* allocation function if it has a second parameter of type `std::return_size_t`, or it has a second parameter of type `std::align_val_t` and a third parameter of type `std::return_size_t`.</ins>
+The return type shall be <ins>`std::sized_allocation_t<void>` ([new.syn]) if the allocation function is a size-returning allocation function and </ins>`void*`<ins> otherwise</ins>.
+The first parameter shall have type `std::size_t` ([support.types]).
+The first parameter shall not have an associated default argument ([dcl.fct.default]).
+The value of the first parameter is interpreted as the requested size of the allocation.
+An allocation function can be a function template.
+Such a template shall declare its return type and first parameter as specified above (that is, template parameter types shall not be used in the return type and first parameter type).
+Allocation function templates shall have two or more parameters.
 </blockquote>
 
-* Amend [expr.new], paragraph 6:
+* Insert [basic.stc.dynamic.allocation], after paragraph 1:
 
 <blockquote>
-When the allocated object is an array (that is, the *noptr-new-declarator*
-syntax is used or the *new-type-id* or *type-id* denotes an array type), the
-<del>*new-expression* yields</del> <ins>*resulting pointer value* is</ins>
-a pointer to the initial element (if any) of the array.
+<ins>A *size-returning* allocation function returns a value with a member subobject that is a pointer suitable to hold the address of potentially allocated storage, and therefore all allocation functions can be said to return a pointer value.</ins>
 </blockquote>
 
-* Insert [expr.new], after paragraph 7:
+* Insert [expr.new], after paragraph 9:
 
-<blockquote>
-<ins>The result of a size-returning placement new-expression is an object of
-type `std::sized_allocation_t<T>` ([new.syn]) whose `ptr` member has the
-resulting pointer value and whose `bytes` member is the `bytes` member of the
-value returned by the size-returning allocation function less any array
-allocation overhead.  The result of any other new-expression is the resulting
-pointer
-value.</ins>
-</blockquote>
+<blockquote><ins> A *new-pointer* is pointer that results from evaluating the *new-expression*:
+*   If the *new-expression* is a size-returning placement new expression then *new-pointer* is the ptr member of `std::sized_allocation_t<T>` ([new.syn])
+*   Otherwise *new-pointer* is a prvalue of type "pointer to T"
 
-* Amend [expr.new], paragraph 18:
-
-<blockquote>
-Overload resolution is performed on a function call created by assembling an
-argument list. The first argument is the amount of space requested, and has
-type `std::size_t`. If the type of the allocated object has new-extended
-alignment, the next argument is the type's alignment, and has type
-`std::align_val_t`. If the *new-placement* syntax is used, the
-initializer-clauses in its expression-list are the succeeding arguments.
-If no matching function is found and the allocated object type has new-extended
-alignment, the alignment argument is removed from the argument list, and
-overload resolution is performed again.
-
-<ins>
-A *size-returning placement new expression* is one whose selected allocation
-function is a size-returning allocation function.
 </ins>
 </blockquote>
 
-* Amend [expr.new], paragraph 27:
+* Amend [expr.new], paragraph 10:
 
 <blockquote>
-A declaration of a placement deallocation function matches the declaration of a
-placement allocation function if it has the same number of parameters and,
-after parameter transformations ([dcl.fct]), all parameter types except the
-first are identical.  <ins>If no matching function is found and one of the
-arguments to the *new-placement* syntax has type `std::return_size_t`, that
-argument is removed from the argument list, and lookup and template argument
-deduction is performed again.</ins> If the lookup finds a single matching
-deallocation function, that function will be called; otherwise, no deallocation
-function will be called. If the lookup finds a usual deallocation function and
-that function, considered as a placement deallocation function, would have been
-selected as a match for the allocation function, the program is ill-formed. For
-a non-placement allocation function, the normal deallocation function lookup is
-used to find the matching deallocation function ([expr.delete]).
+When the allocated type is "array of N T" (that is, the *noptr-new-declarator* syntax is used or the *new-type-id* or *type-id* denotes an array type), <del>the *new-expression* yields a prvalue of type "pointer to T" that points to the initial element (if any) of the array.
+Otherwise, let T be the allocated type; the *new-expression* is a prvalue of type "pointer to T" that points to the object created</del><ins>the *new-pointer* points to the initial element (if any) of the array. Otherwise, let T be the allocated type; the new-pointer points to the object created</ins>.
 </blockquote>
 
-* Amend [expr.new], paragraph 28:
+* Amend [expr.new], paragraph 16:
 
 <blockquote>
-If a *new-expression* calls a deallocation function, it passes the value
-returned from the allocation function call<ins>, or the `ptr` member of that
-value for a size-returning allocation function,</ins> as the first argument of
-type `void*`.  If a placement deallocation function is called, it is passed the
-same additional arguments as were passed to the placement allocation function,
-that is, the same arguments as those specified with the *new-placement* syntax.
-If the implementation is allowed to introduce a temporary object or make a copy
-of any argument as part of the call to the allocation function, it is
-unspecified whether the same object is used in the call to both the allocation
-and deallocation functions.
+When a *new-expression* calls an allocation function and that allocation has not been extended, the *new-expression* passes the amount of space requested to the allocation function as the first argument of type `std::size_t`.
+That argument shall be no less than the size of the object being created; it may be greater than the size of the object being created only if the object is an array and the allocation function is not a non-allocating form ([new.delete.placement]).
+For arrays of `char`, `unsigned char`, and `std::byte`, the difference between the <del>result of the *new-expression*</del><ins>*new-pointer*</ins> and the address returned by the allocation function shall be an integral multiple of the strictest fundamental alignment requirement of any object type whose size is no greater than the size of the array being created.
+</blockquote>
+
+
+* Insert [expr.new], after paragraph 17:
+
+<blockquote>
+<ins>
+The result of a *size-returning* placement *new-expression* is an object of type `std::sized_allocation_t<T>` ([new.syn]) whose `ptr` member points to the object created and bytes member satisfies `requested <= bytes <= returned`, where
+*   `bytes` is the number of bytes of valid storage starting from `ptr`, and
+*   when the allocated type is "array of N T"
+    *   `requested` is `sizeof(T) * N`, and 
+    *   `returned` is the number of bytes of storage returned by the *size-returning* allocation function less any array allocation overhead,
+*   otherwise
+    *   `requested` is `sizeof(T)`, and 
+    *   `returned` is the number of bytes of storage returned by the *size-returning* allocation function.
+
+</ins>
+</blockquote>
+
+* Amend [expr.new], paragraph 19:
+
+<blockquote>
+Overload resolution is performed on a function call created by assembling an argument list.
+The first argument is the amount of space requested, and has type `std::size_t`.
+If the type of the allocated object has new-extended alignment, the next argument is the type's alignment, and has type `std::align_val_t`.<ins>The next argument is `std::return_size_t`.</ins>
+If the *new-placement* syntax is used, the *initializer-clauses* in its *expression-list* are the succeeding arguments.
+If no matching function is found then 
+*   if the allocated object type has *new-extended* alignment, the alignment argument is removed from the argument list;
+*   otherwise, an argument that is the type's alignment and has type `std::align_val_t` is added into the argument list immediately after the first argument;
+
+and then overload resolution is performed again.
+
+<ins>If no matching function is found then the return size argument is removed from the argument list and then overload resolution is performed again.</ins>
+
+</blockquote>
+
+* Amend [expr.new], paragraph 19:
+
+<blockquote>
+[Example 6:
+
+*    `new T` results in one of the following calls:
+    *    <ins>operator new(sizeof(T), std::size_return_t())</ins>
+    *    <ins>operator new(sizeof(T), std::align_val_t(alignof(T)), std::size_return_t())</ins>
+    *    operator new(sizeof(T))
+    *    operator new(sizeof(T), std::align_val_t(alignof(T)))
+
+*    `new(2,f) T` results in one of the following calls:
+    *    <ins>operator new(sizeof(T), std::size_return_t(), 2, f)</ins>
+    *    <ins>operator new(sizeof(T), std::align_val_t(alignof(T)), std::size_return_t(), 2, f)</ins>
+    *    operator new(sizeof(T), 2, f)
+    *    operator new(sizeof(T), std::align_val_t(alignof(T)), 2, f)
+
+*    `new T[5]` results in one of the following calls:
+    *    <ins>operator new[](sizeof(T) * 5 + x, std::size_return_t())</ins>
+    *    <ins>operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)), std::size_return_t())</ins>
+    *    operator new[](sizeof(T) * 5 + x)
+    *    operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)))
+
+*    `new(2,f) T[5]` results in one of the following calls:
+    *    <ins>operator new[](sizeof(T) * 5 + x, std::size_return_t(), 2, f)</ins>
+    *    <ins>operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)), std::size_return_t(), 2, f)</ins>
+    *    operator new[](sizeof(T) * 5 + x, 2, f)
+    *    operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)), 2, f)
+
+Here, each instance of x is a non-negative unspecified value representing array allocation overhead; the result of the *new-expression* will be offset by this amount from the value returned by `operator new[]`. This overhead may be applied in all array *new-expressions*, including those referencing a placement allocation function, except when referencing the library function `operator new[](std::size_t, void*)`.
+The amount of overhead may vary from one invocation of new to another.
+— end example]
+</blockquote>
+
+* Amend [expr.new], paragraph 21:
+
+<blockquote>
+[Note 10: Unless an allocation function has a non-throwing exception specification, it indicates failure to allocate storage by throwing a `std::bad_alloc` exception ([basic.stc.dynamic.allocation], [except], [bad.alloc]); <del>it returns</del><ins>*new-pointer* is</ins> a non-null pointer otherwise.
+If the allocation function has a non-throwing exception specification, <del>it returns</del><ins>*new-pointer* is</ins> null to indicate failure to allocate storage and <ins>*new-pointer* is </ins>a non-null pointer otherwise.
+— end note]
+
+If the allocation function is a non-allocating form ([new.delete.placement]) <del>that returns</del><ins>whose *new-pointer*</ins> null, the behavior is undefined.
+Otherwise, if the allocation function<ins>'s *new-pointer* is</ins> <del>returns</del> null, initialization shall not be done, the deallocation function shall not be called, and the value of the new-expression shall be null.
+
+</blockquote>
+
+* Amend [expr.new], paragraph 22:
+
+<blockquote>
+
+[Note 11: When the allocation function<ins>'s *new-pointer* is</ins> <del>returns</del> a value other than null, it must be a pointer to a block of storage in which space for the object has been reserved.
+The block of storage is assumed to be appropriately aligned and of the requested size.
+The address of the created object will not necessarily be the same as that of the block if the object is an array.
+— end note]
+
+</blockquote>
+
+* Amend [expr.new], paragraph 29:
+
+<blockquote>
+If a new-expression calls a deallocation function, it passes the <del>value returned</del><ins>*new-pointer*</ins> from the allocation function call as the first argument of type void*.
+If a placement deallocation function is called, it is passed the same additional arguments as were passed to the placement allocation function, that is, the same arguments as those specified with the new-placement syntax.
+If the implementation is allowed to introduce a temporary object or make a copy of any argument as part of the call to the allocation function, it is unspecified whether the same object is used in the call to both the allocation and deallocation functions.
 </blockquote>
 
 * Amend [expr.delete], paragraph 2:
 
 <blockquote>
-In an array delete expression, the value of the operand of `delete` may be a
-null pointer value or <del>a pointer value that resulted from</del> <ins>the
-resulting pointer value of</ins> a previous array *new-expression*. If not, the
-behavior is undefined.
+If the operand has a class type, the operand is converted to a pointer type by calling the above-mentioned conversion function, and the converted operand is used in place of the original operand for the remainder of this subclause.
+In a single-object delete expression, the value of the operand of `delete` may be a null pointer value, <del>a pointer value that resulted from </del><ins>the *new-pointer* of </ins>a previous non-array *new-expression*, or a pointer to a base class subobject of an object created by such a *new-expression*.
+If not, the behavior is undefined.
+In an array delete expression, the value of the operand of `delete` may be a null pointer value or <del>a pointer value that resulted from</del><ins>the *new-pointer* of</ins> a previous array *new-expression*.
+If not, the behavior is undefined.
+
+[Note 1: This means that the syntax of the delete-expression must match the type of the object allocated by new, not the syntax of the new-expression.
+— end note]
+
+[Note 2: A pointer to a const type can be the operand of a delete-expression; it is not necessary to cast away the constness ([expr.const.cast]) of the pointer expression before it is used as the operand of the delete-expression.
+— end note]
+
 </blockquote>
 
 * Amend [expr.delete], paragraph 7:
 
 <blockquote>
-The <del>value returned from</del> <ins>the resulting pointer value of</ins>
-the allocation call of the *new-expression* shall be passed as the first
-argument to the deallocation function.
+If the value of the operand of the delete-expression is not a null pointer value, then:
+
+    If the allocation call for the *new-expression* for the object to be deleted was not omitted and the allocation was not extended ([expr.new]), the *delete-expression* shall call a deallocation function.
+    The <del>value returned from the allocation call of the new-expression</del><ins>*new-pointer*</ins> shall be passed as the first argument to the deallocation function.
+
+    Otherwise, if the allocation was extended or was provided by extending the allocation of another *new-expression*, and the *delete-expression* for every other <del>pointer value produced by a *new-expression*</del><ins>*new-pointer*</ins> that had storage provided by the extended *new-expression* has been evaluated, the *delete-expression* shall call a deallocation function.
+    The <del>value returned from the allocation call</del><ins>*new-pointer*</ins> of the extended new-expression shall be passed as the first argument to the deallocation function.
+
+    Otherwise, the *delete-expression* will not call a deallocation function.
+
+[Note 3: The deallocation function is called regardless of whether the destructor for the object or some element of the array throws an exception.
+— end note]
+
+If the value of the operand of the *delete-expression* is a null pointer value, it is unspecified whether a deallocation function will be called as described above.
 </blockquote>
 
 * Amend [replacement.functions], paragraph 2:
@@ -1074,10 +1170,10 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
         "date": "2018-12-07"
     },
 
-    "N4868": {
-        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/n4868.pdf",
-	"date": "2020-10-18",
-	"title": "Working Draft, Standard for Programming Language C++"
+    "CppDraft": {
+        "title": "Working Draft, Standard for Programming Language C++",
+        "href": "https://eel.is/c++draft/",
+        "date": "2022-04-12"
     },
 
     "P0401": {
