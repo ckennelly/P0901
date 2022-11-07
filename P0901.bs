@@ -1,15 +1,15 @@
 <pre class='metadata'>
 Title: Size feedback in operator new
-Status: P
+Status: D
 Shortname: P0901
 Group: WG21
-Revision: 9
+Revision: 10
 Editor: Andrew Hunter, andrewhhunter@gmail.com
 Editor: Chris Kennelly, Google, ckennelly@google.com
-Date: 2022-04-26
+Date: 2022-05-11
 Audience: CWG, LWG
 Abstract: Provide access to actual malloc buffer sizes for users.
-URL: http://wg21.link/P0901R9
+URL: http://wg21.link/P0901R10
 Markup Shorthands: markdown yes
 Default Highlight: C++
 </pre>
@@ -179,7 +179,7 @@ the 65th byte in a 64-byte allocation isn't in use, they cannot be combined into
 a single object; it's almost certainly required to be used for the next 64-byte
 allocation.  In the modern world, `realloc` serves little purpose.
 
-# Proposal # {#prop}
+# Proposed Wording # {#prop}
 
 We propose adding new overloads of `::operator new` (size-returning allocation
 functions) that directly inform the user of the size available to them.  C++
@@ -200,9 +200,9 @@ The following allocation and deallocation functions ([support.dynamic]) are impl
 <pre>
   [[nodiscard]] void* operator new(std::size_t);
   [[nodiscard]] void* operator new(std::size_t, std::align_val_t);
-  <ins>[[nodiscard]] std::sized_allocation_t<void> operator new(std::size_t, 
+  <ins>[[nodiscard]] std::sized_allocation_t&lt;void&gt; operator new(std::size_t, 
       std::return_size_t);</ins>
-  <ins>[[nodiscard]] std::sized_allocation_t<void> operator new(std::size_t, std::align_val_t, 
+  <ins>[[nodiscard]] std::sized_allocation_t&lt;void&gt; operator new(std::size_t, std::align_val_t, 
       std::return_size_t);</ins>
   
   void operator delete(void*) noexcept;
@@ -212,9 +212,9 @@ The following allocation and deallocation functions ([support.dynamic]) are impl
   
   [[nodiscard]] void* operator new[](std::size_t);
   [[nodiscard]] void* operator new[](std::size_t, std::align_val_t);
-  <ins>[[nodiscard]] std::sized_allocation_t<void> operator new[](std::size_t,
+  <ins>[[nodiscard]] std::sized_allocation_t&lt;void&gt; operator new[](std::size_t,
       std::return_size_t);</ins>
-  <ins>[[nodiscard]] std::sized_allocation_t<void> operator new[](std::size_t, std::align_val_t,
+  <ins>[[nodiscard]] std::sized_allocation_t&lt;void&gt; operator new[](std::size_t, std::align_val_t,
       std::return_size_t);</ins>
 
   void operator delete[](void*) noexcept;
@@ -238,26 +238,26 @@ Allocation and/or deallocation functions may also be declared and defined for an
 
 <blockquote>
 An allocation function that is not a class member function shall belong to the global scope and not have a name with internal linkage.
-<ins>An allocation function is a *size-returning* allocation function if it has a second parameter of type `std::return_size_t`, or it has a second parameter of type `std::align_val_t` and a third parameter of type `std::return_size_t`.</ins>
 The return type shall be <ins>`std::sized_allocation_t<void>` ([new.syn]) if the allocation function is a size-returning allocation function and </ins>`void*`<ins> otherwise</ins>.
 The first parameter shall have type `std::size_t` ([support.types]).
 The first parameter shall not have an associated default argument ([dcl.fct.default]).
 The value of the first parameter is interpreted as the requested size of the allocation.
+<ins>An allocation function is a *size-returning* allocation function if it has a second parameter of type `std::return_size_t`, or it has a second parameter of type `std::align_val_t` and a third parameter of type `std::return_size_t`.</ins>
 An allocation function can be a function template.
 Such a template shall declare its return type and first parameter as specified above (that is, template parameter types shall not be used in the return type and first parameter type).
-Allocation function templates shall have two or more parameters.
+Allocation function templates shall have two or more parameters<ins> as specified above</ins>.
 </blockquote>
 
 * Insert [basic.stc.dynamic.allocation], after paragraph 1:
 
 <blockquote>
-<ins>A *size-returning* allocation function returns a value with a member subobject that is a pointer suitable to hold the address of potentially allocated storage, and therefore all allocation functions can be said to return a pointer value.</ins>
+<ins>A size-returning allocation function returns a value with a member subobject that is a pointer suitable to hold the address of potentially allocated storage, and therefore all allocation functions are said to return a pointer value.</ins>
 </blockquote>
 
 * Insert [expr.new], after paragraph 9:
 
-<blockquote><ins> A *new-pointer* is pointer that results from evaluating the *new-expression*:
-*   If the *new-expression* is a size-returning placement new expression then *new-pointer* is the ptr member of `std::sized_allocation_t<T>` ([new.syn])
+<blockquote><ins> A *new-pointer* is a pointer that results from evaluating the *new-expression*:
+*   If the *new-expression* is a size-returning placement new expression then *new-pointer* is the `ptr` member of `std::sized_allocation_t<T>` ([new.syn])
 *   Otherwise *new-pointer* is a prvalue of type "pointer to T"
 
 </ins>
@@ -283,14 +283,14 @@ For arrays of `char`, `unsigned char`, and `std::byte`, the difference between t
 
 <blockquote>
 <ins>
-The result of a *size-returning* placement *new-expression* is an object of type `std::sized_allocation_t<T>` ([new.syn]) whose `ptr` member points to the object created and bytes member satisfies `requested <= bytes <= returned`, where
+The result of a size-returning placement *new-expression* is an object of type `std::sized_allocation_t<T>` ([new.syn]) whose `ptr` member points to the object created and `bytes` member satisfies <math>requested &le; bytes &le; returned</math>, where
 *   `bytes` is the number of bytes of valid storage starting from `ptr`, and
 *   when the allocated type is "array of N T"
     *   `requested` is `sizeof(T) * N`, and 
-    *   `returned` is the number of bytes of storage returned by the *size-returning* allocation function less any array allocation overhead,
+    *   `returned` is the number of bytes of storage returned by the size-returning allocation function less any array allocation overhead,
 *   otherwise
     *   `requested` is `sizeof(T)`, and 
-    *   `returned` is the number of bytes of storage returned by the *size-returning* allocation function.
+    *   `returned` is the number of bytes of storage returned by the size-returning allocation function.
 
 </ins>
 </blockquote>
@@ -298,48 +298,23 @@ The result of a *size-returning* placement *new-expression* is an object of type
 * Amend [expr.new], paragraph 19:
 
 <blockquote>
-Overload resolution is performed on a function call created by assembling an argument list.
-The first argument is the amount of space requested, and has type `std::size_t`.
-If the type of the allocated object has new-extended alignment, the next argument is the type's alignment, and has type `std::align_val_t`.<ins>The next argument is `std::return_size_t`.</ins>
-If the *new-placement* syntax is used, the *initializer-clauses* in its *expression-list* are the succeeding arguments.
-If no matching function is found then 
-*   if the allocated object type has *new-extended* alignment, the alignment argument is removed from the argument list;
-*   otherwise, an argument that is the type's alignment and has type `std::align_val_t` is added into the argument list immediately after the first argument;
-
-and then overload resolution is performed again.
-
-<ins>If no matching function is found then the return size argument is removed from the argument list and then overload resolution is performed again.</ins>
-
-</blockquote>
-
-* Amend [expr.new], paragraph 19:
-
-<blockquote>
 [Example 6:
 
-*    `new T` results in one of the following calls:
-    *    <ins>operator new(sizeof(T), std::size_return_t())</ins>
-    *    <ins>operator new(sizeof(T), std::align_val_t(alignof(T)), std::size_return_t())</ins>
-    *    operator new(sizeof(T))
-    *    operator new(sizeof(T), std::align_val_t(alignof(T)))
+*    <ins>`new(std::return_size) T` results in one of the following calls</ins>:
+    *    <ins>operator new(sizeof(T), std::return_size))</ins>
+    *    <ins>operator new(sizeof(T), std::align_val_t(alignof(T)), std::return_size))</ins>
 
-*    `new(2,f) T` results in one of the following calls:
-    *    <ins>operator new(sizeof(T), std::size_return_t(), 2, f)</ins>
-    *    <ins>operator new(sizeof(T), std::align_val_t(alignof(T)), std::size_return_t(), 2, f)</ins>
-    *    operator new(sizeof(T), 2, f)
-    *    operator new(sizeof(T), std::align_val_t(alignof(T)), 2, f)
+*    <ins>`new(std::return_size,2,f) T` results in one of the following calls</ins>:
+    *    <ins>operator new(sizeof(T), std::return_size), 2, f)</ins>
+    *    <ins>operator new(sizeof(T), std::align_val_t(alignof(T)), std::return_size), 2, f)</ins>
 
-*    `new T[5]` results in one of the following calls:
-    *    <ins>operator new[](sizeof(T) * 5 + x, std::size_return_t())</ins>
-    *    <ins>operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)), std::size_return_t())</ins>
-    *    operator new[](sizeof(T) * 5 + x)
-    *    operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)))
+*    <ins>`new(std::return_size) T[5]` results in one of the following calls</ins>:
+    *    <ins>operator new[](sizeof(T) * 5 + x, std::return_size))</ins>
+    *    <ins>operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)), std::return_size))</ins>
 
-*    `new(2,f) T[5]` results in one of the following calls:
-    *    <ins>operator new[](sizeof(T) * 5 + x, std::size_return_t(), 2, f)</ins>
-    *    <ins>operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)), std::size_return_t(), 2, f)</ins>
-    *    operator new[](sizeof(T) * 5 + x, 2, f)
-    *    operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)), 2, f)
+*    <ins>`new(std::return_size,2,f) T[5]` results in one of the following calls</ins>:
+    *    <ins>operator new[](sizeof(T) * 5 + x, std::return_size), 2, f)</ins>
+    *    <ins>operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)), std::return_size), 2, f)</ins>
 
 Here, each instance of x is a non-negative unspecified value representing array allocation overhead; the result of the *new-expression* will be offset by this amount from the value returned by `operator new[]`. This overhead may be applied in all array *new-expressions*, including those referencing a placement allocation function, except when referencing the library function `operator new[](std::size_t, void*)`.
 The amount of overhead may vary from one invocation of new to another.
@@ -554,9 +529,9 @@ void  operator delete[](void* ptr, void*) noexcept;
 <blockquote>
 <pre>
 <ins>
-[[nodiscard]] std::sized_allocation_t<void> ::operator new(
+[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new(
 	std::size_t size, std::return_size_t, std::nothrow_t) noexcept;
-[[nodiscard]] std::sized_allocation_t<void> ::operator new(
+[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new(
 	std::size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
 </ins>
 </pre>
@@ -611,9 +586,9 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
 <blockquote>
 <pre>
 <ins>
-[[nodiscard]] std::sized_allocation_t<void> ::operator new[](
+[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
         std::size_t size, std::return_size_t);
-[[nodiscard]] std::sized_allocation_t<void> ::operator new[](
+[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
 	std::size_t size, std::align_val_t alignment, std::return_size_t);
 </ins>
 </pre>
@@ -640,9 +615,9 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
 <blockquote>
 <pre>
 <ins>
-[[nodiscard]] std::sized_allocation_t<void> ::operator new[](
+[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
 	std::size_t size, std::return_size_t, std::nothrow_t) noexcept;
-[[nodiscard]] std::sized_allocation_t<void> ::operator new[](
+[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
 	std::size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
 </ins>
 </pre>
