@@ -1560,8 +1560,8 @@ Possible extra rowspan handling
     blockquote c-[vi] { color: inherit; } /* Name.Variable.Instance */
     blockquote c-[il] { color: inherit; } /* Literal.Number.Integer.Long */
   </style>
-  <meta content="Bikeshed version fb1e763a4, updated Tue Mar 1 13:13:50 2022 -0800" name="generator">
-  <link href="http://wg21.link/P0901R10" rel="canonical">
+  <meta content="Bikeshed version 63e66730b, updated Tue Oct 25 12:35:05 2022 -0700" name="generator">
+  <link href="http://wg21.link/D0901R10" rel="canonical">
   <link href="https://isocpp.org/favicon.ico" rel="icon">
 <style>/* style-autolinks */
 
@@ -1809,6 +1809,14 @@ a.self-link:hover {
 }
 .heading > a.self-link {
     font-size: 83%;
+}
+.example > a.self-link,
+.note > a.self-link,
+.issue > a.self-link {
+    /* These blocks are overflow:auto, so positioning outside
+       doesn't work. */
+    left: auto;
+    right: 0;
 }
 li > a.self-link {
     left: calc(-1 * (3.5rem - 26px) - 2em);
@@ -2082,16 +2090,17 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">P0901R10<br>Size feedback in operator new</h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-05-11">2022-05-11</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2022-11-08">2022-11-08</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt>This version:
-     <dd><a class="u-url" href="http://wg21.link/P0901R10">http://wg21.link/P0901R10</a>
+     <dd><a class="u-url" href="http://wg21.link/D0901R10">http://wg21.link/D0901R10</a>
      <dt class="editor">Authors:
      <dd class="editor p-author h-card vcard"><a class="p-name fn u-email email" href="mailto:andrewhhunter@gmail.com">Andrew Hunter</a>
      <dd class="editor p-author h-card vcard"><a class="p-name fn u-email email" href="mailto:ckennelly@google.com">Chris Kennelly</a> (<span class="p-org org">Google</span>)
+     <dd class="editor p-author h-card vcard"><a class="p-name fn u-email email" href="mailto:tkoeppe@google.com">Thomas Köppe</a> (<span class="p-org org">Google DeepMind</span>)
      <dt>Audience:
-     <dd>CWG, LWG
+     <dd>CWG, EWG, LWG
      <dt>Project:
      <dd>ISO/IEC JTC1/SC22/WG21 14882: Programming Language — C++
     </dl>
@@ -2119,30 +2128,47 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li><a href="#afteralloc"><span class="secno">1.2</span> <span class="content">after allocation is too late</span></a>
       <li><a href="#realloc"><span class="secno">1.3</span> <span class="content">realloc’s day has passed</span></a>
      </ol>
-    <li><a href="#prop"><span class="secno">2</span> <span class="content">Proposed Wording</span></a>
     <li>
-     <a href="#alternatives"><span class="secno">3</span> <span class="content">Alternative Designs Considered</span></a>
+     <a href="#proposal"><span class="secno">2</span> <span class="content">Proposal</span></a>
      <ol class="toc">
-      <li><a href="#splode"><span class="secno">3.1</span> <span class="content"><em>How</em> many <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code>'s?</span></a>
-      <li><a href="#trivial"><span class="secno">3.2</span> <span class="content">Implementation difficulty</span></a>
-      <li><a href="#sizeddelete"><span class="secno">3.3</span> <span class="content">Interaction with Sized Delete</span></a>
-      <li><a href="#advantages"><span class="secno">3.4</span> <span class="content">Advantages</span></a>
+      <li><a href="#allocation-functions"><span class="secno">2.1</span> <span class="content">Allocation functions</span></a>
+      <li><a href="#new"><span class="secno">2.2</span> <span class="content"><em>New-expression</em>s</span></a>
      </ol>
-    <li><a href="#new"><span class="secno">4</span> <span class="content">New Expressions</span></a>
-    <li><a href="#naming"><span class="secno">5</span> <span class="content">Naming</span></a>
+    <li><a href="#prop"><span class="secno">3</span> <span class="content">Proposed Wording</span></a>
+    <li>
+     <a href="#alternatives"><span class="secno">4</span> <span class="content">Alternative Designs Considered</span></a>
+     <ol class="toc">
+      <li><a href="#parameters-and-return-types"><span class="secno">4.1</span> <span class="content">Parameters and return types</span></a>
+      <li>
+       <a href="#alt-newexpr"><span class="secno">4.2</span> <span class="content">New expressions</span></a>
+       <ol class="toc">
+        <li><a href="#alt-newinter"><span class="secno">4.2.1</span> <span class="content">Interaction of allocation functions and <em>new-expression</em>s</span></a>
+        <li><a href="#alt-newsize"><span class="secno">4.2.2</span> <span class="content">Which kind of "size"</span></a>
+       </ol>
+     </ol>
+    <li>
+     <a href="#discuss"><span class="secno">5</span> <span class="content">Discussion</span></a>
+     <ol class="toc">
+      <li><a href="#splode"><span class="secno">5.1</span> <span class="content"><em>How</em> many <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code>'s?</span></a>
+      <li><a href="#trivial"><span class="secno">5.2</span> <span class="content">Implementation difficulty</span></a>
+      <li><a href="#sizeddelete"><span class="secno">5.3</span> <span class="content">Interaction with Sized Delete</span></a>
+      <li><a href="#advantages"><span class="secno">5.4</span> <span class="content">Advantages</span></a>
+      <li><a href="#naming"><span class="secno">5.5</span> <span class="content">Naming</span></a>
+     </ol>
     <li><a href="#rel"><span class="secno">6</span> <span class="content">Related work</span></a>
     <li>
      <a href="#history"><span class="secno">7</span> <span class="content">History</span></a>
      <ol class="toc">
-      <li><a href="#R9"><span class="secno">7.1</span> <span class="content">R8 → R9</span></a>
-      <li><a href="#R8"><span class="secno">7.2</span> <span class="content">R7 → R8</span></a>
-      <li><a href="#R7"><span class="secno">7.3</span> <span class="content">R6 → R7</span></a>
-      <li><a href="#R6"><span class="secno">7.4</span> <span class="content">R5 → R6</span></a>
-      <li><a href="#R5"><span class="secno">7.5</span> <span class="content">R4 → R5</span></a>
-      <li><a href="#R4"><span class="secno">7.6</span> <span class="content">R3 → R4</span></a>
-      <li><a href="#R3"><span class="secno">7.7</span> <span class="content">R2 → R3</span></a>
-      <li><a href="#R2"><span class="secno">7.8</span> <span class="content">R1 → R2</span></a>
-      <li><a href="#R1"><span class="secno">7.9</span> <span class="content">R0 → R1</span></a>
+      <li><a href="#R10"><span class="secno">7.1</span> <span class="content">R9 → P10</span></a>
+      <li><a href="#R9"><span class="secno">7.2</span> <span class="content">R8 → R9</span></a>
+      <li><a href="#R8"><span class="secno">7.3</span> <span class="content">R7 → R8</span></a>
+      <li><a href="#R7"><span class="secno">7.4</span> <span class="content">R6 → R7</span></a>
+      <li><a href="#R6"><span class="secno">7.5</span> <span class="content">R5 → R6</span></a>
+      <li><a href="#R5"><span class="secno">7.6</span> <span class="content">R4 → R5</span></a>
+      <li><a href="#R4"><span class="secno">7.7</span> <span class="content">R3 → R4</span></a>
+      <li><a href="#R3"><span class="secno">7.8</span> <span class="content">R2 → R3</span></a>
+      <li><a href="#R2"><span class="secno">7.9</span> <span class="content">R1 → R2</span></a>
+      <li><a href="#R1"><span class="secno">7.10</span> <span class="content">R0 → R1</span></a>
      </ol>
     <li>
      <a href="#references"><span class="secno"></span> <span class="content">References</span></a>
@@ -2153,12 +2179,11 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   </nav>
   <main>
    <h2 class="heading settled" data-level="1" id="mot"><span class="secno">1. </span><span class="content">Motivation</span><a class="self-link" href="#mot"></a></h2>
-    <em>Throughout this document "malloc" refers to the</em> <strong>implementation</strong> <em>of</em> <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code> <em>both as fairly standard practice for implementers, and to
-make clear the distinction between the interface and the implementation.</em> 
+   <p><em>Throughout this document, "malloc" refers to the</em> <strong>implementation</strong> <em>of</em> <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code> <em>both as fairly standard practice for implementers, and to
+make clear the distinction between the interface and the implementation.</em></p>
    <p>Everyone’s favorite dynamic data structure, <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>vector</c-></code>, allocates memory with
 code that looks something like this (with many details, like <code class="highlight"><c- n>Allocator</c-></code>,
-templating for non <code class="highlight"><c- b>char</c-></code>, and
-exception safety, elided):</p>
+templating for non <code class="highlight"><c- b>char</c-></code>, and exception safety, elided):</p>
 <pre class="highlight"><c- b>void</c-> <c- nf>vector::reserve</c-><c- p>(</c-><c- b>size_t</c-> <c- n>new_cap</c-><c- p>)</c-> <c- p>{</c->
   <c- k>if</c-> <c- p>(</c-><c- n>capacity_</c-> <c- o>>=</c-> <c- n>new_cap</c-><c- p>)</c-> <c- k>return</c-><c- p>;</c->
   <c- k>const</c-> <c- b>size_t</c-> <c- n>bytes</c-> <c- o>=</c-> <c- n>new_cap</c-><c- p>;</c->
@@ -2275,11 +2300,66 @@ possible...but most modern allocators use variants of slab allocation. Even if
 the 65th byte in a 64-byte allocation isn’t in use, they cannot be combined into
 a single object; it’s almost certainly required to be used for the next 64-byte
 allocation.  In the modern world, <code class="highlight"><c- n>realloc</c-></code> serves little purpose.</p>
-   <h2 class="heading settled" data-level="2" id="prop"><span class="secno">2. </span><span class="content">Proposed Wording</span><a class="self-link" href="#prop"></a></h2>
-   <p>We propose adding new overloads of <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code> (size-returning allocation
-functions) that directly inform the user of the size available to them.  C++
+   <h2 class="heading settled" data-level="2" id="proposal"><span class="secno">2. </span><span class="content">Proposal</span><a class="self-link" href="#proposal"></a></h2>
+   <h3 class="heading settled" data-level="2.1" id="allocation-functions"><span class="secno">2.1. </span><span class="content">Allocation functions</span><a class="self-link" href="#allocation-functions"></a></h3>
+   <p>We propose adding new overloads of <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code> (so-called "size-returning allocation
+functions") that directly inform the user of the size available to them.  C++
 makes <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code> replaceable (15.5.4.6), allowing a program to provide
 its own version different from the standard library’s implementation.</p>
+   <p>The new overloads are selected by a tag argument of type <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>return_size_t</c-></code>,
+usually provided as the value <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>return_size</c-></code>. (This is analogous to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>nothrow_t</c-></code>/<code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>nothrow</c-></code> and to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>align_val_t</c-></code>.)</p>
+   <p>The new overloads return a new type, <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>sized_allocation_t</c-><c- o>&lt;</c-><c- b>void</c-><c- o>></c-></code>, which is
+a specialization of the new class template <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>sized_allocation_t</c-></code> and which
+stores a void pointer that corresponds to the pointer returned by the existing
+allocation functions, as well as the new size feedback information.</p>
+   <h3 class="heading settled" data-level="2.2" id="new"><span class="secno">2.2. </span><span class="content"><em>New-expression</em>s</span><a class="self-link" href="#new"></a></h3>
+   <p>Additionally, we propose exposing the size feedback from <em>new-expression</em>s, too. We arrive at this design through the following
+chain of reasoning:</p>
+   <ol>
+    <li data-md>
+     <p>We want an allocation function with size feedback (motivated above).</p>
+    <li data-md>
+     <p>Allocation functions in C++ are called <code class="highlight"><c- k>operator</c-> <c- k>new</c-></code>, so this
+facility is provided as new overloads of <code class="highlight"><c- k>operator</c-> <c- k>new</c-></code>. (This is
+similar to how extended alignment support was added as a set of
+new overloads.)</p>
+    <li data-md>
+     <p>Allocation functions are generically used by <em>new-expression</em>s, either
+of the "usual" or of "placement" form.</p>
+    <li data-md>
+     <p>Therefore, if new allocation functions are proposed, then there must be
+matching <em>new-expression</em>s that use them. We call these "size-returning <em>new-expression</em>s; they are placement <em>new-expression</em>s whose first placement
+argument is <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>return_size</c-></code>.</p>
+   </ol>
+   <p>The interesting wrinkle here is that our new allocation functions return a novel
+type, and not <code class="highlight"><c- b>void</c-><c- o>*</c-></code> like the existing functions. Consequently, a size-returning <em>new-expression</em> should also have a different type. Whereas <code class="highlight"><c- k>new</c-> <c- n>T</c-></code> is a <code class="highlight"><c- n>T</c-><c- o>*</c-></code>,
+we propose that <code class="highlight"><c- k>new</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>)</c-> <c- n>T</c-></code> is a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>sized_allocation_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-></code>,
+and has values as follows:</p>
+   <ul>
+    <li data-md>
+     <p>For <code class="highlight"><c- k>new</c-></code>, a pointer to the object created and the size of the allocation in bytes.</p>
+    <li data-md>
+     <p>For <code class="highlight"><c- k>new</c-><c- p>[]</c-></code>, a pointers to the initial element of the array and the size of
+the allocation in bytes (less an unspecified overhead):</p>
+<pre class="highlight"><c- k>auto</c-> <c- p>[</c-><c- n>p</c-><c- p>,</c-> <c- n>sz</c-><c- p>]</c-> <c- o>=</c-> <c- k>new</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>)</c-> <c- n>T</c-><c- p>[</c-><c- mi>5</c-><c- p>];</c->
+<c- k>for</c-> <c- p>(</c-><c- b>int</c-> <c- n>i</c-> <c- o>=</c-> <c- mi>5</c-><c- p>;</c-> <c- n>i</c-> <c- o>&lt;</c-> <c- n>sz</c-> <c- o>/</c-> <c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>);</c-> <c- n>i</c-><c- o>++</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>new</c-> <c- p>(</c-><c- n>p</c-><c- p>[</c-><c- n>i</c-><c- p>])</c-> <c- n>T</c-><c- p>;</c->
+<c- p>}</c->
+<c- k>for</c-> <c- p>(</c-><c- b>int</c-> <c- n>i</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c-> <c- n>i</c-> <c- o>&lt;</c-> <c- n>sz</c-> <c- o>/</c-> <c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>);</c-> <c- n>i</c-><c- o>++</c-><c- p>)</c-> <c- p>{</c->
+  <c- n>p</c-><c- p>[</c-><c- n>i</c-><c- p>].</c-><c- n>DoStuff</c-><c- p>();</c->
+<c- p>}</c->
+<c- k>for</c-> <c- p>(</c-><c- b>int</c-> <c- n>i</c-> <c- o>=</c-> <c- mi>5</c-><c- p>;</c-> <c- n>i</c-> <c- o>&lt;</c-> <c- n>sz</c-> <c- o>/</c-> <c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>);</c-> <c- n>i</c-><c- o>++</c-><c- p>)</c-> <c- p>{</c->
+  <c- n>p</c-><c- p>[</c-><c- n>i</c-><c- p>].</c-><c- o>~</c-><c- n>T</c-><c- p>();</c->
+<c- p>}</c->
+<c- k>delete</c-><c- p>[]</c-> <c- n>p</c-><c- p>;</c->
+</pre>
+    <li data-md>
+     <p>See <a href="#alt-newsize">§ 4.2.2 Which kind of "size"</a> for a discussion on the meaning of "size".</p>
+   </ul>
+   <p>A size-returning <em>new-expression</em> is ill-formed if no suitable allocation function
+is found through the usual overload resolution, but see <a href="#alt-newinter">§ 4.2.1 Interaction of allocation functions and new-expressions</a> for a
+discussion of alternatives.</p>
+   <h2 class="heading settled" data-level="3" id="prop"><span class="secno">3. </span><span class="content">Proposed Wording</span><a class="self-link" href="#prop"></a></h2>
    <p>We propose wording, relative to <a data-link-type="biblio" href="#biblio-cppdraft">[CppDraft]</a>:</p>
    <ul>
     <li data-md>
@@ -2365,9 +2445,10 @@ Allocation function templates shall have two or more parameters
       A <em>new-pointer</em> is a pointer that results from evaluating the <em>new-expression</em>: 
      <ul>
       <li data-md>
-       <p>If the <em>new-expression</em> is a size-returning placement new expression then <em>new-pointer</em> is the <code class="highlight"><c- n>ptr</c-></code> member of <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>sized_allocation_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-></code> ([new.syn])</p>
+       <p>If the <em>new-expression</em> is a size-returning placement <em>new-expression</em>,
+then <em>new-pointer</em> is the <code class="highlight"><c- n>ptr</c-></code> member of <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>sized_allocation_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-></code> ([new.syn]).</p>
       <li data-md>
-       <p>Otherwise <em>new-pointer</em> is a prvalue of type "pointer to T"</p>
+       <p>Otherwise, <em>new-pointer</em> is a prvalue of type "pointer to T".</p>
      </ul>
     </ins>
    </blockquote>
@@ -2377,10 +2458,13 @@ Allocation function templates shall have two or more parameters
    </ul>
    <blockquote>
      When the allocated type is "array of N T" (that is, the <em>noptr-new-declarator</em> syntax is used or the <em>new-type-id</em> or <em>type-id</em> denotes an array type), 
-    <del>the <em>new-expression</em> yields a prvalue of type "pointer to T" that points to the initial element (if any) of the array.
-Otherwise, let T be the allocated type; the <em>new-expression</em> is a prvalue of type "pointer to T" that points to the object created</del>
-    <ins>the <em>new-pointer</em> points to the initial element (if any) of the array. Otherwise, let T be the allocated type; the new-pointer points to the object created</ins>
-    . 
+    <del>the <em>new-expression</em> yields a prvalue of type "pointer to T" that</del>
+    <ins>the <em>new-pointer</em></ins>
+     points to the initial element (if any) of the array.
+Otherwise, let T be the allocated type; the 
+    <del><em>new-expression</em> is a prvalue of type "pointer to T" that</del>
+    <ins><em>new-pointer</em></ins>
+     points to the object created. 
    </blockquote>
    <ul>
     <li data-md>
@@ -2400,7 +2484,7 @@ For arrays of <code class="highlight"><c- b>char</c-></code>, <code class="highl
    </ul>
    <blockquote>
     <ins>
-      The result of a size-returning placement <em>new-expression</em> is an object of type <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>sized_allocation_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-></code> ([new.syn]) whose <code class="highlight"><c- n>ptr</c-></code> member points to the object created and <code class="highlight"><c- n>bytes</c-></code> member satisfies 
+      The result of a size-returning placement <em>new-expression</em> is an object of type <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>sized_allocation_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-></code> ([new.syn]) whose <code class="highlight"><c- n>ptr</c-></code> member points to the object created and whose <code class="highlight"><c- n>bytes</c-></code> member satisfies 
      <math>requested ≤ bytes ≤ returned</math>
      , where 
      <ul>
@@ -2437,39 +2521,39 @@ For arrays of <code class="highlight"><c- b>char</c-></code>, <code class="highl
       : 
       <ul>
        <li data-md>
-        <ins>operator new(sizeof(T), std::return_size))</ins>
+        <ins><code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>)</c-></code></ins>
        <li data-md>
-        <ins>operator new(sizeof(T), std::align_val_t(alignof(T)), std::return_size))</ins>
+        <ins><code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>align_val_t</c-><c- p>(</c-><c- k>alignof</c-><c- p>(</c-><c- n>T</c-><c- p>)),</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>)</c-></code></ins>
       </ul>
      <li data-md>
       <ins><code class="highlight"><c- k>new</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>,</c-><c- mi>2</c-><c- p>,</c-><c- n>f</c-><c- p>)</c-> <c- n>T</c-></code> results in one of the following calls</ins>
       : 
       <ul>
        <li data-md>
-        <ins>operator new(sizeof(T), std::return_size), 2, f)</ins>
+        <ins><code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code></ins>
        <li data-md>
-        <ins>operator new(sizeof(T), std::align_val_t(alignof(T)), std::return_size), 2, f)</ins>
+        <ins><code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>align_val_t</c-><c- p>(</c-><c- k>alignof</c-><c- p>(</c-><c- n>T</c-><c- p>)),</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code></ins>
       </ul>
      <li data-md>
       <ins><code class="highlight"><c- k>new</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>)</c-> <c- n>T</c-><c- p>[</c-><c- mi>5</c-><c- p>]</c-></code> results in one of the following calls</ins>
       : 
       <ul>
        <li data-md>
-        <ins>operator new<a href="sizeof(T"></a> * 5 + x, std::return_size))</ins>
+        <ins><code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>[](</c-><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-> <c- o>*</c-> <c- mi>5</c-> <c- o>+</c-> <c- n>x</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>)</c-></code></ins>
        <li data-md>
-        <ins>operator new<a href="sizeof(T"></a> * 5 + x, std::align_val_t(alignof(T)), std::return_size))</ins>
+        <ins><code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>[](</c-><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-> <c- o>*</c-> <c- mi>5</c-> <c- o>+</c-> <c- n>x</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>align_val_t</c-><c- p>(</c-><c- k>alignof</c-><c- p>(</c-><c- n>T</c-><c- p>)),</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>)</c-></code></ins>
       </ul>
      <li data-md>
       <ins><code class="highlight"><c- k>new</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>,</c-><c- mi>2</c-><c- p>,</c-><c- n>f</c-><c- p>)</c-> <c- n>T</c-><c- p>[</c-><c- mi>5</c-><c- p>]</c-></code> results in one of the following calls</ins>
       : 
       <ul>
        <li data-md>
-        <ins>operator new<a href="sizeof(T"></a> * 5 + x, std::return_size), 2, f)</ins>
+        <ins><code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>[](</c-><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-> <c- o>*</c-> <c- mi>5</c-> <c- o>+</c-> <c- n>x</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code></ins>
        <li data-md>
-        <ins>operator new<a href="sizeof(T"></a> * 5 + x, std::align_val_t(alignof(T)), std::return_size), 2, f)</ins>
+        <ins><code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>[](</c-><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-> <c- o>*</c-> <c- mi>5</c-> <c- o>+</c-> <c- n>x</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>align_val_t</c-><c- p>(</c-><c- k>alignof</c-><c- p>(</c-><c- n>T</c-><c- p>)),</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code></ins>
       </ul>
     </ul>
-    <p>Here, each instance of x is a non-negative unspecified value representing array allocation overhead; the result of the <em>new-expression</em> will be offset by this amount from the value returned by <code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>[]</c-></code>. This overhead may be applied in all array <em>new-expressions</em>, including those referencing a placement allocation function, except when referencing the library function <code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>[](</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-><c- p>,</c-> <c- b>void</c-><c- o>*</c-><c- p>)</c-></code>.
+    <p>Here, each instance of <code class="highlight"><c- n>x</c-></code> is a non-negative unspecified value representing array allocation overhead; the result of the <em>new-expression</em> will be offset by this amount from the value returned by <code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>[]</c-></code>. This overhead may be applied in all array <em>new-expressions</em>, including those referencing a placement allocation function, except when referencing the library function <code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>[](</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-><c- p>,</c-> <c- b>void</c-><c- o>*</c-><c- p>)</c-></code>.
 The amount of overhead may vary from one invocation of new to another.
 — end example]</p>
    </blockquote>
@@ -2898,7 +2982,8 @@ to the allocation function
         <ins>PLACEHOLDER DATE</ins>
     </table>
    </blockquote>
-   <h2 class="heading settled" data-level="3" id="alternatives"><span class="secno">3. </span><span class="content">Alternative Designs Considered</span><a class="self-link" href="#alternatives"></a></h2>
+   <h2 class="heading settled" data-level="4" id="alternatives"><span class="secno">4. </span><span class="content">Alternative Designs Considered</span><a class="self-link" href="#alternatives"></a></h2>
+   <h3 class="heading settled" data-level="4.1" id="parameters-and-return-types"><span class="secno">4.1. </span><span class="content">Parameters and return types</span><a class="self-link" href="#parameters-and-return-types"></a></h3>
    <p>Another signature we could use would be:</p>
 <pre class="highlight"><c- k>enum</c-> <c- k>class</c-> <c- nc>return_size_t</c-> <c- o>:</c-> <c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- p>{};</c->
 <c- b>void</c-><c- o>*</c-> <c- o>::</c-><c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>size</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size_t</c-><c- o>&amp;</c-><c- p>);</c->
@@ -2930,121 +3015,44 @@ than making the reference parameter an inherent part of the API.</p>
    </ul>
    <p>Whether we use a reference parameter or a second returned value, the
 interpretation is the same.</p>
-   <h3 class="heading settled" data-level="3.1" id="splode"><span class="secno">3.1. </span><span class="content"><em>How</em> many <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code>'s?</span><a class="self-link" href="#splode"></a></h3>
-   <p>It is unfortunate that we have so many permutations of <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code>--eight
-seems like far more than we should really need!  But there really isn’t any
-significant runtime cost for having them.  Use of raw calls to <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code> is relatively rare:  It’s a <em>building block</em> for low-level libraries, allocators
-(<a data-link-type="biblio" href="#biblio-p0401r4">[P0401R4]</a>), and so on, so the cognitive burden on C++ users is low.</p>
-   <p>The authors have considered other alternatives to the additional overloads.  At
-the Jacksonville meeting, EWG suggested looking at parameter packs.</p>
+   <h3 class="heading settled" data-level="4.2" id="alt-newexpr"><span class="secno">4.2. </span><span class="content">New expressions</span><a class="self-link" href="#alt-newexpr"></a></h3>
+   <h4 class="heading settled" data-level="4.2.1" id="alt-newinter"><span class="secno">4.2.1. </span><span class="content">Interaction of allocation functions and <em>new-expression</em>s</span><a class="self-link" href="#alt-newinter"></a></h4>
+   <p>A <em>new-expression</em> finds an allocation function by overload
+resolution. We could in principle entertain a number of new rules for
+this overload resolution, and we could also consider transforming a
+non-size-returning allocation function into a size-returning one and
+vice versa.</p>
    <ul>
     <li data-md>
-     <p>Parameter packs do not reduce the number of symbols introduced.
-Implementers still need to provide implementations each of the n overloads.</p>
+     <p><code class="highlight"><c- b>void</c-><c- o>*</c-> <c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- b>size_t</c-><c- p>)</c-></code> could be converted into a size-returning
+function by "thunking", returning <code class="highlight"><c- p>{</c-><c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- n>n</c-><c- p>),</c-> <c- n>n</c-><c- p>}</c-></code>.</p>
     <li data-md>
-     <p>Retrofitting parameter packs leaves us with <em>more</em> mangled variants.
-Implementers need to provide both the legacy symbols as well as the
-parameter pack-mangled symbols.</p>
+     <p><code class="highlight"><c- n>sized_allocation_t</c-><c- o>&lt;</c-><c- b>void</c-><c- o>></c-> <c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- b>size_t</c-><c- p>,</c-> <c- n>return_size_t</c-><c- p>)</c-></code> could be
+converted into a non-size returning function, returning <code class="highlight"><c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- n>n</c-><c- p>,</c-> <c- n>return_size</c-><c- p>).</c-><c- n>ptr</c-></code>.</p>
    </ul>
-   <p>The authors have also considered APIs where all parameters are passed, thereby
-requiring a single new overload.  This adds further overhead for
-implementations, as it moves compile-time decisions (is the alignment at or
-below the minimum guaranteed by <code class="highlight"><c- k>operator</c-> <c- k>new</c-></code>) into runtime ones.</p>
-   <p>The alternative to modifying the handling of <em>new-expressions</em> invoking
-deallocation functions (when an exception is thrown) would require additional
-overloads for <code class="highlight"><c- k>operator</c-> <c- k>delete</c-></code> / <code class="highlight"><c- k>operator</c-> <c- k>delete</c-><c- p>[]</c-></code> whose sole purpose would
-be to accept and discard the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>return_size_t</c-></code>.</p>
-   <h3 class="heading settled" data-level="3.2" id="trivial"><span class="secno">3.2. </span><span class="content">Implementation difficulty</span><a class="self-link" href="#trivial"></a></h3>
-   <p>It’s worth reiterating that there’s a perfectly good trivial implementation of these
-functions:</p>
-<pre class="highlight"><c- n>std</c-><c- o>::</c-><c- n>sized_allocation_t</c-><c- o>&lt;</c-><c- b>void</c-><c- o>></c-> <c- o>::</c-><c- k>operator</c-> <c- k>new</c-><c- p>(</c->
-    <c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>n</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size_t</c-><c- p>)</c-> <c- p>{</c->
-  <c- k>return</c-> <c- p>{</c-><c- o>::</c-><c- k>operator</c-> <c- nf>new</c-><c- p>(</c-><c- n>n</c-><c- p>),</c-> <c- n>n</c-><c- p>};</c->
-<c- p>}</c->
-</pre>
-   <p>Malloc implementations are free to properly override this with a more impactful
-definition, but this paper poses no significant difficulty for toolchain
-implementers.</p>
-   <p>Implementation Experience:</p>
+   <p>This would allow us to consider the following alternative designs:</p>
    <ul>
     <li data-md>
-     <p>TCMalloc has developed an implementation opensourced on GitHub
-(<a data-link-type="biblio" href="#biblio-mallocextension">[MallocExtension]</a>).  While this requires mapping from an integer size
-class to the true number of bytes, combining this lookup with the
-allocation is more efficient as we avoid recomputing the sizeclass itself
-(given a request) or deriving it from the object’s address.</p>
+     <p>Regular <code class="highlight"><c- k>new</c-> <c- n>T</c-></code> could use a size-returning allocation function if
+one was available. This would allow users to only provide a single
+place where they implement a sophisticated allocation function, and
+it would be used everywhere. We would probably <em>not</em> want to change
+the type of this regular <em>new-expression</em>, though.</p>
     <li data-md>
-     <p>jemalloc is prototyping a <code class="highlight"><c- n>smallocx</c-></code> function providing a C API for this
-functionality <a data-link-type="biblio" href="#biblio-smallocx">[smallocx]</a>.</p>
+     <p>Sized <code class="highlight"><c- k>new</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>)</c-> <c- n>T</c-></code> could fall back to using a
+non-size-returning allocation function if no size-returning one
+was available, using thunking. This would make such expressions
+unconditionally well-formed, but would silently disregard user
+intent.</p>
+    <li data-md>
+     <p>One could even entertain making the type (!) of a <em>new-expression</em> depend on the result of overload resolution for the allocation
+function, but that seems highly novel, brittle, and unhelpful.</p>
    </ul>
-   <h3 class="heading settled" data-level="3.3" id="sizeddelete"><span class="secno">3.3. </span><span class="content">Interaction with Sized Delete</span><a class="self-link" href="#sizeddelete"></a></h3>
-   <p>For allocations made with <code class="highlight"><c- n>sized_allocation_t</c-></code>-returning <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code>, we need to
-relax <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>delete</c-></code>'s size argument (16.6.2.1 and 16.6.2.2).  For
-allocations of <code class="highlight"><c- n>T</c-></code>, the size quanta used by the allocator may not be a multiple
-of <code class="highlight"><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-></code>, leading to both the original and returned sizes being
-unrecoverable at the time of deletion.</p>
-   <p>Consider the memory allocated by:</p>
-<pre class="highlight"><c- k>using</c-> <c- n>T</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>aligned_storage</c-><c- o>&lt;</c-><c- mi>16</c-><c- p>,</c-> <c- mi>8</c-><c- o>>::</c-><c- n>type</c-><c- p>;</c->
-
-<c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-> <c- n>v</c-><c- p>(</c-><c- mi>4</c-><c- p>);</c->
-</pre>
-   <p>The underlying heap allocation is made with <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- mi>64</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size_t</c-><c- p>)</c-></code>.</p>
-   <ul>
-    <li data-md>
-     <p>The memory allocator may return a 72 byte object:  Since there is no <code class="highlight"><c- n>k</c-></code> such that <code class="highlight"><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-> <c- o>*</c-> <c- n>k</c-> <c- o>=</c-> <c- mi>72</c-></code>, we can’t provide that value to <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>delete</c-><c- p>(</c-><c- b>void</c-><c- o>*</c-><c- p>,</c-> <c- b>size_t</c-><c- p>)</c-></code>.  The only option would be storing 72 explicitly,
-which would be wasteful.</p>
-    <li data-md>
-     <p>The memory allocator may instead return an 80 byte object (5 <code class="highlight"><c- n>T</c-></code>'s):  We
-now cannot represent the original request when deallocating without
-additional storage.</p>
-   </ul>
-   <p>For allocations made with</p>
-<pre class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tie</c-><c- p>(</c-><c- n>p</c-><c- p>,</c-> <c- n>m</c-><c- p>)</c-> <c- o>=</c-> <c- o>::</c-><c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- n>n</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size_t</c-><c- p>{});</c->
-</pre>
-   <p>
-    we permit <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>delete</c-><c- p>(</c-><c- n>p</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> where 
-    <math><em>n</em> &lt;= <em>s</em> &lt;= <em>m</em></math>
-    .
-   </p>
-   <p>This behavior is consistent with <a data-link-type="biblio" href="#biblio-jemalloc">[jemalloc]</a>'s <code class="highlight"><c- n>sdallocx</c-></code>, where the
-deallocation size must fall between the request (<code class="highlight"><c- n>n</c-></code>) and the actual allocated
-size (<code class="highlight"><c- n>m</c-></code>) inclusive.</p>
-   <h3 class="heading settled" data-level="3.4" id="advantages"><span class="secno">3.4. </span><span class="content">Advantages</span><a class="self-link" href="#advantages"></a></h3>
-   <p>It’s easy to see that this approach nicely solves the problems posed by other methods:</p>
-   <ul>
-    <li data-md>
-     <p>We pay almost nothing in speed to return an actual-size parameter.  For
- TCMalloc and jemalloc, this is typically a load from to map from <em>sizeclass</em> to size.  This cost is strictly smaller than with <code class="highlight"><c- n>nallocx</c-></code> or
- the like, as that same translation must be performed in addition to the
- duplicative work previously discussed.</p>
-    <li data-md>
-     <p>We are told exactly the size we have, without risk of UB.  We can avoid
- subsequent reallocations when growing to a buffer to an already-allocated
- size.</p>
-    <li data-md>
-     <p>Allocator telemetry knows actual request sizes exactly.</p>
-   </ul>
-   <h2 class="heading settled" data-level="4" id="new"><span class="secno">4. </span><span class="content">New Expressions</span><a class="self-link" href="#new"></a></h2>
-   <p>Additionally, we propose expanding this functionality to <code class="highlight"><c- k>new</c-></code> expressions by returning:</p>
-   <ul>
-    <li data-md>
-     <p>For <code class="highlight"><c- k>new</c-></code>, a pointer to the object created and the size of the allocation in bytes.</p>
-    <li data-md>
-     <p>For <code class="highlight"><c- k>new</c-><c- p>[]</c-></code>, a pointers to the initial element of the array and the size of
-the allocation in bytes (less overhead):</p>
-<pre class="highlight"><c- k>auto</c-> <c- p>[</c-><c- n>p</c-><c- p>,</c-> <c- n>sz</c-><c- p>]</c-> <c- o>=</c-> <c- k>new</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>return_size</c-><c- p>)</c-> <c- n>T</c-><c- p>[</c-><c- mi>5</c-><c- p>];</c->
-<c- k>for</c-> <c- p>(</c-><c- b>int</c-> <c- n>i</c-> <c- o>=</c-> <c- mi>5</c-><c- p>;</c-> <c- n>i</c-> <c- o>&lt;</c-> <c- n>sz</c-> <c- o>/</c-> <c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>);</c-> <c- n>i</c-><c- o>++</c-><c- p>)</c-> <c- p>{</c->
-  <c- k>new</c-> <c- p>(</c-><c- n>p</c-><c- p>[</c-><c- n>i</c-><c- p>])</c-> <c- n>T</c-><c- p>;</c->
-<c- p>}</c->
-<c- k>for</c-> <c- p>(</c-><c- b>int</c-> <c- n>i</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c-> <c- n>i</c-> <c- o>&lt;</c-> <c- n>sz</c-> <c- o>/</c-> <c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>);</c-> <c- n>i</c-><c- o>++</c-><c- p>)</c-> <c- p>{</c->
-  <c- n>p</c-><c- p>[</c-><c- n>i</c-><c- p>].</c-><c- n>DoStuff</c-><c- p>();</c->
-<c- p>}</c->
-<c- k>for</c-> <c- p>(</c-><c- b>int</c-> <c- n>i</c-> <c- o>=</c-> <c- mi>5</c-><c- p>;</c-> <c- n>i</c-> <c- o>&lt;</c-> <c- n>sz</c-> <c- o>/</c-> <c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>);</c-> <c- n>i</c-><c- o>++</c-><c- p>)</c-> <c- p>{</c->
-  <c- n>p</c-><c- p>[</c-><c- n>i</c-><c- p>].</c-><c- o>~</c-><c- n>T</c-><c- p>();</c->
-<c- p>}</c->
-<c- k>delete</c-><c- p>[]</c-> <c- n>p</c-><c- p>;</c->
-</pre>
-   </ul>
+   <p>None of those extensions seem appealing, since they add complexity and
+obscure the selection of actual allocation function, so we do not
+pursue those, and instead always require that a size-returning
+allocation function be findable in order for a size-returning <em>new-expression</em> to be well-formed.</p>
+   <h4 class="heading settled" data-level="4.2.2" id="alt-newsize"><span class="secno">4.2.2. </span><span class="content">Which kind of "size"</span><a class="self-link" href="#alt-newsize"></a></h4>
    <p>We considered alternatives for returning the size.</p>
    <ul>
     <li data-md>
@@ -3062,7 +3070,7 @@ the array (minus the array allocation overhead).</p>
 <c- p>}</c->
 <c- k>delete</c-><c- p>[]</c-> <c- n>start</c-><c- p>;</c->
 </pre>
-     <p>The pair of pointers provides convience for use with iterator-oriented
+     <p>The pair of pointers provides convenience for use with iterator-oriented
 algorithms.  The problem we foresee is that a size-returning allocation
 function may not provide a size that is an appropriate multiple of <code class="highlight"><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-></code> (or fail to be a multiple of <code class="highlight"><c- k>alignof</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-></code>, a possible, but
 unlikely scenario).  This imposes a need for more extensive logic around
@@ -3119,7 +3127,7 @@ irrelevant for the individual elements.</p>
 <c- k>delete</c-><c- p>[]</c-> <c- n>p</c-><c- p>;</c->
 </pre>
      <p>(Casts omitted for clarity.)</p>
-     <p>As discussed for <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code> in <a href="#prop">§ 2 Proposed Wording</a>, a reference parameter poses
+     <p>As discussed for <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code> in <a href="#prop">§ 3 Proposed Wording</a>, a reference parameter poses
 difficulties for optimizers and involves returning the size via
 memory (depending on ABI).</p>
    </ul>
@@ -3137,7 +3145,102 @@ array allocation overhead).</p>
      <p>The presented proposal (leaving this space uninitialized) was chosen for
 consistency with <code class="highlight"><c- k>new</c-></code>.</p>
    </ul>
-   <h2 class="heading settled" data-level="5" id="naming"><span class="secno">5. </span><span class="content">Naming</span><a class="self-link" href="#naming"></a></h2>
+   <h2 class="heading settled" data-level="5" id="discuss"><span class="secno">5. </span><span class="content">Discussion</span><a class="self-link" href="#discuss"></a></h2>
+   <h3 class="heading settled" data-level="5.1" id="splode"><span class="secno">5.1. </span><span class="content"><em>How</em> many <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code>'s?</span><a class="self-link" href="#splode"></a></h3>
+   <p>It is unfortunate that we have so many permutations of <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code>--eight
+seems like far more than we should really need!  But there really isn’t any
+significant runtime cost for having them.  Use of raw calls to <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code> is relatively rare:  It’s a <em>building block</em> for low-level libraries, allocators
+(<a data-link-type="biblio" href="#biblio-p0401r4">[P0401R4]</a>), and so on, so the cognitive burden on C++ users is low.</p>
+   <p>The authors have considered other alternatives to the additional overloads.  At
+the Jacksonville meeting, EWG suggested looking at parameter packs.</p>
+   <ul>
+    <li data-md>
+     <p>Parameter packs do not reduce the number of symbols introduced.
+Implementers still need to provide implementations each of the n overloads.</p>
+    <li data-md>
+     <p>Retrofitting parameter packs leaves us with <em>more</em> mangled variants.
+Implementers need to provide both the legacy symbols as well as the
+parameter pack-mangled symbols.</p>
+   </ul>
+   <p>The authors have also considered APIs where all parameters are passed, thereby
+requiring a single new overload.  This adds further overhead for
+implementations, as it moves compile-time decisions (is the alignment at or
+below the minimum guaranteed by <code class="highlight"><c- k>operator</c-> <c- k>new</c-></code>) into runtime ones.</p>
+   <p>The alternative to modifying the handling of <em>new-expressions</em> invoking
+deallocation functions (when an exception is thrown) would require additional
+overloads for <code class="highlight"><c- k>operator</c-> <c- k>delete</c-></code> / <code class="highlight"><c- k>operator</c-> <c- k>delete</c-><c- p>[]</c-></code> whose sole purpose would
+be to accept and discard the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>return_size_t</c-></code>.</p>
+   <h3 class="heading settled" data-level="5.2" id="trivial"><span class="secno">5.2. </span><span class="content">Implementation difficulty</span><a class="self-link" href="#trivial"></a></h3>
+   <p>It’s worth reiterating that there’s a perfectly good trivial implementation of these
+functions:</p>
+<pre class="highlight"><c- n>std</c-><c- o>::</c-><c- n>sized_allocation_t</c-><c- o>&lt;</c-><c- b>void</c-><c- o>></c-> <c- o>::</c-><c- k>operator</c-> <c- k>new</c-><c- p>(</c->
+    <c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>n</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size_t</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>return</c-> <c- p>{</c-><c- o>::</c-><c- k>operator</c-> <c- nf>new</c-><c- p>(</c-><c- n>n</c-><c- p>),</c-> <c- n>n</c-><c- p>};</c->
+<c- p>}</c->
+</pre>
+   <p>Malloc implementations are free to properly override this with a more impactful
+definition, but this paper poses no significant difficulty for toolchain
+implementers.</p>
+   <p>Implementation Experience:</p>
+   <ul>
+    <li data-md>
+     <p>TCMalloc has developed an implementation opensourced on GitHub
+(<a data-link-type="biblio" href="#biblio-mallocextension">[MallocExtension]</a>).  While this requires mapping from an integer size
+class to the true number of bytes, combining this lookup with the
+allocation is more efficient as we avoid recomputing the sizeclass itself
+(given a request) or deriving it from the object’s address.</p>
+    <li data-md>
+     <p>jemalloc is prototyping a <code class="highlight"><c- n>smallocx</c-></code> function providing a C API for this
+functionality <a data-link-type="biblio" href="#biblio-smallocx">[smallocx]</a>.</p>
+   </ul>
+   <h3 class="heading settled" data-level="5.3" id="sizeddelete"><span class="secno">5.3. </span><span class="content">Interaction with Sized Delete</span><a class="self-link" href="#sizeddelete"></a></h3>
+   <p>For allocations made with <code class="highlight"><c- n>sized_allocation_t</c-></code>-returning <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code>, we need to
+relax <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>delete</c-></code>'s size argument (16.6.2.1 and 16.6.2.2).  For
+allocations of <code class="highlight"><c- n>T</c-></code>, the size quanta used by the allocator may not be a multiple
+of <code class="highlight"><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-></code>, leading to both the original and returned sizes being
+unrecoverable at the time of deletion.</p>
+   <p>Consider the memory allocated by:</p>
+<pre class="highlight"><c- k>using</c-> <c- n>T</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>aligned_storage</c-><c- o>&lt;</c-><c- mi>16</c-><c- p>,</c-> <c- mi>8</c-><c- o>>::</c-><c- n>type</c-><c- p>;</c->
+
+<c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-> <c- n>v</c-><c- p>(</c-><c- mi>4</c-><c- p>);</c->
+</pre>
+   <p>The underlying heap allocation is made with <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- mi>64</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size_t</c-><c- p>)</c-></code>.</p>
+   <ul>
+    <li data-md>
+     <p>The memory allocator may return a 72 byte object:  Since there is no <code class="highlight"><c- n>k</c-></code> such that <code class="highlight"><c- k>sizeof</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-> <c- o>*</c-> <c- n>k</c-> <c- o>=</c-> <c- mi>72</c-></code>, we can’t provide that value to <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>delete</c-><c- p>(</c-><c- b>void</c-><c- o>*</c-><c- p>,</c-> <c- b>size_t</c-><c- p>)</c-></code>.  The only option would be storing 72 explicitly,
+which would be wasteful.</p>
+    <li data-md>
+     <p>The memory allocator may instead return an 80 byte object (5 <code class="highlight"><c- n>T</c-></code>'s):  We
+now cannot represent the original request when deallocating without
+additional storage.</p>
+   </ul>
+   <p>For allocations made with</p>
+<pre class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tie</c-><c- p>(</c-><c- n>p</c-><c- p>,</c-> <c- n>m</c-><c- p>)</c-> <c- o>=</c-> <c- o>::</c-><c- k>operator</c-> <c- k>new</c-><c- p>(</c-><c- n>n</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>return_size_t</c-><c- p>{});</c->
+</pre>
+   <p>
+    we permit <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>delete</c-><c- p>(</c-><c- n>p</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> where 
+    <math><em>n</em> &lt;= <em>s</em> &lt;= <em>m</em></math>
+    .
+   </p>
+   <p>This behavior is consistent with <a data-link-type="biblio" href="#biblio-jemalloc">[jemalloc]</a>'s <code class="highlight"><c- n>sdallocx</c-></code>, where the
+deallocation size must fall between the request (<code class="highlight"><c- n>n</c-></code>) and the actual allocated
+size (<code class="highlight"><c- n>m</c-></code>) inclusive.</p>
+   <h3 class="heading settled" data-level="5.4" id="advantages"><span class="secno">5.4. </span><span class="content">Advantages</span><a class="self-link" href="#advantages"></a></h3>
+   <p>It’s easy to see that this approach nicely solves the problems posed by other methods:</p>
+   <ul>
+    <li data-md>
+     <p>We pay almost nothing in speed to return an actual-size parameter.  For
+ TCMalloc and jemalloc, this is typically a load from to map from <em>sizeclass</em> to size.  This cost is strictly smaller than with <code class="highlight"><c- n>nallocx</c-></code> or
+ the like, as that same translation must be performed in addition to the
+ duplicative work previously discussed.</p>
+    <li data-md>
+     <p>We are told exactly the size we have, without risk of UB.  We can avoid
+ subsequent reallocations when growing to a buffer to an already-allocated
+ size.</p>
+    <li data-md>
+     <p>Allocator telemetry knows actual request sizes exactly.</p>
+   </ul>
+   <h3 class="heading settled" data-level="5.5" id="naming"><span class="secno">5.5. </span><span class="content">Naming</span><a class="self-link" href="#naming"></a></h3>
    <p>The library support type is named <code class="highlight"><c- n>sized_allocation_t</c-></code>, based on
 LEWG’s naming suggestions and for consistency (in choice of <code class="highlight"><c- n>_t</c-></code>) with the
 other allocation library support types (<code class="highlight"><c- b>size_t</c-></code>, <code class="highlight"><c- n>align_val_t</c-></code>, <code class="highlight"><c- n>nothrow_t</c-></code>,
@@ -3154,11 +3257,21 @@ original revision: how could an implementation of <code class="highlight"><c- n>
 requested feedback in a way that would work with any underlying malloc
 implementation?</p>
    <h2 class="heading settled" data-level="7" id="history"><span class="secno">7. </span><span class="content">History</span><a class="self-link" href="#history"></a></h2>
-   <h3 class="heading settled" data-level="7.1" id="R9"><span class="secno">7.1. </span><span class="content">R8 → R9</span><a class="self-link" href="#R9"></a></h3>
+   <h3 class="heading settled" data-level="7.1" id="R10"><span class="secno">7.1. </span><span class="content">R9 → P10</span><a class="self-link" href="#R10"></a></h3>
+   <p>A detailed design of <em>new-expression</em>s has been added. Previously,
+changes to <em>new-expression</em>s had only been outlined at a high level.
+As a result, previously suggested changes to overload resolution rules
+for finding the allocation function (which was allowed to fall back
+to a non-size-returning allocation functon, with unclear consequences)
+have been removed. The relation between <em>new-expression</em>s and allocation
+functions is now described explicitly.</p>
+   <p>Sections are reorganized: alternative designs are now separate from
+a discussion of the chosen design, and an expanded section on <em>new-expressions</em> has been moved up before the proposed wording.</p>
+   <h3 class="heading settled" data-level="7.2" id="R9"><span class="secno">7.2. </span><span class="content">R8 → R9</span><a class="self-link" href="#R9"></a></h3>
    <p>CWG reviewed <a data-link-type="biblio" href="#biblio-p0901r8">[P0901R8]</a> via <a data-link-type="biblio" href="#biblio-cwg2021telecon">[CWG2021Telecon]</a>.</p>
    <p>Wording changes have been made to the proposal based on CWG feedback and
 assistance from Ryan McDougall.</p>
-   <h3 class="heading settled" data-level="7.2" id="R8"><span class="secno">7.2. </span><span class="content">R7 → R8</span><a class="self-link" href="#R8"></a></h3>
+   <h3 class="heading settled" data-level="7.3" id="R8"><span class="secno">7.3. </span><span class="content">R7 → R8</span><a class="self-link" href="#R8"></a></h3>
    <p>LEWG reviewed <a data-link-type="biblio" href="#biblio-p0901r6">[P0901R6]</a> via telecon.</p>
    <blockquote>
      Poll: Send P0901R6, after changing <code class="highlight"><c- n>p</c-></code> to <code class="highlight"><c- n>ptr</c-></code> and <code class="highlight"><c- n>n</c-></code> to <code class="highlight"><c- n>bytes</c-></code> in <code class="highlight"><c- n>sized_allocation_t</c-></code>, to electronic ballot to be forwarded to CWG. 
@@ -3187,12 +3300,12 @@ members from <code class="highlight"><c- n>p</c-></code> to <code class="highlig
     <li data-md>
      <p>Refined wording in proposal.</p>
    </ul>
-   <h3 class="heading settled" data-level="7.3" id="R7"><span class="secno">7.3. </span><span class="content">R6 → R7</span><a class="self-link" href="#R7"></a></h3>
+   <h3 class="heading settled" data-level="7.4" id="R7"><span class="secno">7.4. </span><span class="content">R6 → R7</span><a class="self-link" href="#R7"></a></h3>
    <ul>
     <li data-md>
      <p>Removed extraneous <code class="highlight"><c- n>std</c-><c- o>::</c-></code> typo</p>
    </ul>
-   <h3 class="heading settled" data-level="7.4" id="R6"><span class="secno">7.4. </span><span class="content">R5 → R6</span><a class="self-link" href="#R6"></a></h3>
+   <h3 class="heading settled" data-level="7.5" id="R6"><span class="secno">7.5. </span><span class="content">R5 → R6</span><a class="self-link" href="#R6"></a></h3>
    <p>LEWG reviewed <a data-link-type="biblio" href="#biblio-p0901r5">[P0901R5]</a> library support types at <a data-link-type="biblio" href="#biblio-prague">[Prague]</a>.</p>
    <ul>
     <li data-md>
@@ -3293,7 +3406,7 @@ allow users to replace <code class="highlight"><c- k>operator</c-> <c- k>new</c-
 LEWG’s naming suggestions and for consistency (in choice of <code class="highlight"><c- n>_t</c-></code>) with the
 other allocation library support types (<code class="highlight"><c- b>size_t</c-></code>, <code class="highlight"><c- n>align_val_t</c-></code>, <code class="highlight"><c- n>nothrow_t</c-></code>,
 etc.).  We expect this to be spelled rarely.</p>
-   <h3 class="heading settled" data-level="7.5" id="R5"><span class="secno">7.5. </span><span class="content">R4 → R5</span><a class="self-link" href="#R5"></a></h3>
+   <h3 class="heading settled" data-level="7.6" id="R5"><span class="secno">7.6. </span><span class="content">R4 → R5</span><a class="self-link" href="#R5"></a></h3>
    <p>EWG reviewed P0901R4 at <a data-link-type="biblio" href="#biblio-cologne">[Cologne]</a>.</p>
    <blockquote>
      Poll: P0901R4 as presented, forward to LEWG for C++23, <em>not</em> C++20. 
@@ -3321,12 +3434,12 @@ etc.).  We expect this to be spelled rarely.</p>
     <li data-md>
      <p>Added LEWG audience for library support type names.</p>
    </ul>
-   <h3 class="heading settled" data-level="7.6" id="R4"><span class="secno">7.6. </span><span class="content">R3 → R4</span><a class="self-link" href="#R4"></a></h3>
+   <h3 class="heading settled" data-level="7.7" id="R4"><span class="secno">7.7. </span><span class="content">R3 → R4</span><a class="self-link" href="#R4"></a></h3>
    <ul>
     <li data-md>
      <p>Update reference to revised <a data-link-type="biblio" href="#biblio-p0401r1">[P0401R1]</a>.</p>
    </ul>
-   <h3 class="heading settled" data-level="7.7" id="R3"><span class="secno">7.7. </span><span class="content">R2 → R3</span><a class="self-link" href="#R3"></a></h3>
+   <h3 class="heading settled" data-level="7.8" id="R3"><span class="secno">7.8. </span><span class="content">R2 → R3</span><a class="self-link" href="#R3"></a></h3>
    <ul>
     <li data-md>
      <p>Added proposed wording.</p>
@@ -3334,7 +3447,7 @@ etc.).  We expect this to be spelled rarely.</p>
      <p>For newly added allocation functions, <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>nothrow_t</c-></code> is passed by value,
 rather than reference.</p>
    </ul>
-   <h3 class="heading settled" data-level="7.8" id="R2"><span class="secno">7.8. </span><span class="content">R1 → R2</span><a class="self-link" href="#R2"></a></h3>
+   <h3 class="heading settled" data-level="7.9" id="R2"><span class="secno">7.9. </span><span class="content">R1 → R2</span><a class="self-link" href="#R2"></a></h3>
    <p>Applied feedback from San Diego Mailing</p>
    <ul>
     <li data-md>
@@ -3344,21 +3457,21 @@ worse on any other.</p>
     <li data-md>
      <p>Added rationale for not using parameter packs for this functionality.</p>
    </ul>
-   <h3 class="heading settled" data-level="7.9" id="R1"><span class="secno">7.9. </span><span class="content">R0 → R1</span><a class="self-link" href="#R1"></a></h3>
+   <h3 class="heading settled" data-level="7.10" id="R1"><span class="secno">7.10. </span><span class="content">R0 → R1</span><a class="self-link" href="#R1"></a></h3>
    <p>Applied feedback from <a data-link-type="biblio" href="#biblio-jacksonvilleminutes">[JacksonvilleMinutes]</a>.</p>
    <ul>
     <li data-md>
-     <p>Clarified in <a href="#prop">§ 2 Proposed Wording</a> the desire to leverage the existing "replacement
+     <p>Clarified in <a href="#prop">§ 3 Proposed Wording</a> the desire to leverage the existing "replacement
 functions" wording of the IS, particularly given the close interoperation
 with the existing <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>new</c-></code>/<code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k>delete</c-></code> implementations.</p>
     <li data-md>
-     <p>Added a discussion of the Microsoft ABI in <a href="#prop">§ 2 Proposed Wording</a>.</p>
+     <p>Added a discussion of the Microsoft ABI in <a href="#prop">§ 3 Proposed Wording</a>.</p>
     <li data-md>
-     <p>Noted in <a href="#splode">§ 3.1 How many ::operator new's?</a> the possibility of using a parameter pack.</p>
+     <p>Noted in <a href="#splode">§ 5.1 How many ::operator new's?</a> the possibility of using a parameter pack.</p>
     <li data-md>
-     <p>Added a proposal for <a href="#new">§ 4 New Expressions</a>, as requested by EWG.</p>
+     <p>Added a proposal for <a href="#new">§ 2.2 New-expressions</a>, as requested by EWG.</p>
    </ul>
-   <p>Additionally, a discussion of <a href="#sizeddelete">§ 3.3 Interaction with Sized Delete</a> has been added.</p>
+   <p>Additionally, a discussion of <a href="#sizeddelete">§ 5.3 Interaction with Sized Delete</a> has been added.</p>
   </main>
 <script>
 (function() {
@@ -3493,13 +3606,13 @@ with the existing <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k
   <h3 class="no-num no-ref heading settled" id="informative"><span class="content">Informative References</span><a class="self-link" href="#informative"></a></h3>
   <dl>
    <dt id="biblio-cologne">[Cologne]
-   <dd><a href="http://wiki.edg.com/bin/view/Wg21cologne2019/P0901R4-EWG"><cite>Size feedback in operator new</cite></a>. 2019-09-17. URL: <a href="http://wiki.edg.com/bin/view/Wg21cologne2019/P0901R4-EWG">http://wiki.edg.com/bin/view/Wg21cologne2019/P0901R4-EWG</a>
+   <dd><cite>Size feedback in operator new</cite>. 2019-09-17. 
    <dt id="biblio-cppdraft">[CppDraft]
    <dd><a href="https://eel.is/c++draft/"><cite>Working Draft, Standard for Programming Language C++</cite></a>. 2022-04-12. URL: <a href="https://eel.is/c++draft/">https://eel.is/c++draft/</a>
    <dt id="biblio-cwg2021telecon">[CWG2021Telecon]
-   <dd><a href="https://wiki.edg.com/bin/view/Wg21telecons2021/PaperReviewTeleconference2021-03-22"><cite>Paper Review Teleconference 2021-03-22</cite></a>. 2021-03-22. URL: <a href="https://wiki.edg.com/bin/view/Wg21telecons2021/PaperReviewTeleconference2021-03-22">https://wiki.edg.com/bin/view/Wg21telecons2021/PaperReviewTeleconference2021-03-22</a>
+   <dd><cite>Paper Review Teleconference 2021-03-22</cite>. 2021-03-22. 
    <dt id="biblio-jacksonvilleminutes">[JacksonvilleMinutes]
-   <dd><a href="http://wiki.edg.com/bin/view/Wg21jacksonville2018/P0901R0-Jax18"><cite>Jacksonville 2018 minutes</cite></a>. 2018-03-15. URL: <a href="http://wiki.edg.com/bin/view/Wg21jacksonville2018/P0901R0-Jax18">http://wiki.edg.com/bin/view/Wg21jacksonville2018/P0901R0-Jax18</a>
+   <dd><cite>Jacksonville 2018 minutes</cite>. 2018-03-15. 
    <dt id="biblio-jemalloc">[JEMALLOC]
    <dd><a href="http://jemalloc.net/jemalloc.3.html"><cite>jemalloc(3) - Linux man page</cite></a>. URL: <a href="http://jemalloc.net/jemalloc.3.html">http://jemalloc.net/jemalloc.3.html</a>
    <dt id="biblio-mallocextension">[MallocExtension]
@@ -3517,7 +3630,7 @@ with the existing <code class="highlight"><c- o>::</c-><c- k>operator</c-> <c- k
    <dt id="biblio-p0901r8">[P0901R8]
    <dd>Chris Kennelly, Andrew Hunter. <a href="https://wg21.link/p0901r8"><cite>Size feedback in operator new</cite></a>. 15 December 2020. URL: <a href="https://wg21.link/p0901r8">https://wg21.link/p0901r8</a>
    <dt id="biblio-prague">[Prague]
-   <dd><a href="http://wiki.edg.com/bin/view/Wg21prague/P0901"><cite>LEWG Prague Minutes for P901R5</cite></a>. 2020-02-10. URL: <a href="http://wiki.edg.com/bin/view/Wg21prague/P0901">http://wiki.edg.com/bin/view/Wg21prague/P0901</a>
+   <dd><cite>LEWG Prague Minutes for P901R5</cite>. 2020-02-10. 
    <dt id="biblio-sizeddelete">[SizedDelete]
    <dd>Lawrence Crowl. <a href="http://wg21.link/n3536"><cite>C++ Sized Deallocation</cite></a>. URL: <a href="http://wg21.link/n3536">http://wg21.link/n3536</a>
    <dt id="biblio-smallocx">[SMALLOCX]
