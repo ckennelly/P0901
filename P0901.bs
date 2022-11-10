@@ -1,28 +1,29 @@
 <pre class='metadata'>
 Title: Size feedback in operator new
 Status: D
-Shortname: P0901
+Shortname: D0901
 Group: WG21
-Revision: 10
+Revision: 11
 Editor: Andrew Hunter, andrewhhunter@gmail.com
 Editor: Chris Kennelly, Google, ckennelly@google.com
-Date: 2022-05-11
-Audience: CWG, LWG
+Editor: Thomas K&ouml;ppe, Google DeepMind, tkoeppe@google.com
+Date: 2022-11-10
+Audience: CWG, EWG, LWG
 Abstract: Provide access to actual malloc buffer sizes for users.
-URL: http://wg21.link/P0901R10
+URL: http://wg21.link/D0901R11
 Markup Shorthands: markdown yes
 Default Highlight: C++
 </pre>
 
 # Motivation # {#mot}
-*Throughout this document "malloc" refers to the* **implementation**
+
+*Throughout this document, "malloc" refers to the* **implementation**
 *of* `::operator new` *both as fairly standard practice for implementers, and to
 make clear the distinction between the interface and the implementation.*
 
 Everyone's favorite dynamic data structure, `std::vector`, allocates memory with
 code that looks something like this (with many details, like `Allocator`,
-templating for non `char`, and
-exception safety, elided):
+templating for non `char`, and exception safety, elided):
 
 <xmp>
 void vector::reserve(size_t new_cap) {
@@ -179,31 +180,60 @@ the 65th byte in a 64-byte allocation isn't in use, they cannot be combined into
 a single object; it's almost certainly required to be used for the next 64-byte
 allocation.  In the modern world, `realloc` serves little purpose.
 
-# Proposed Wording # {#prop}
+# Proposal # {#proposal}
 
-We propose adding new overloads of `::operator new` (size-returning allocation
-functions) that directly inform the user of the size available to them.  C++
+## Allocation functions
+
+We propose adding new overloads of `::operator new` (so-called "size-returning allocation
+functions") that directly inform the user of the size available to them.  C++
 makes `::operator new` replaceable (15.5.4.6), allowing a program to provide
 its own version different from the standard library's implementation.
 
-We propose wording, relative to [[CppDraft]]:
+We note immediately that we are deliberately not providing this facility as an unrelated
+free function, nor leave it as an implementation detail of `std::allocator`; see [[#alt-allocfn]]
+for a detailed discussion.
 
-* Amend [basic.stc.dynamic.allocation], paragraph 1:
+The new overloads are selected by a tag argument of type `std::return_size_t`,
+usually provided as the value `std::return_size`. (This is analogous to
+`std::nothrow_t`/`std::nothrow` and to `std::align_val_t`.)
+
+The new overloads return a new type, `std::sized_allocation_t`, which
+stores a void pointer that corresponds to the pointer returned by the
+existing allocation functions, as well as the new size feedback
+information.
+
+## *New-expression*s ## {#new}
+
+In the previous revision, R10, we had proposed to make *new-expression*s be able to use the new
+allocation functions, so that a placement *new-expression* of the form `new (std;:return_size)
+T` would have a novel return type that includes the size feedback. However, during EWG discussion
+it became clear that that is not a useful facility; see [[#alt-newexpr]] for details.
+
+Consequently, we are not proposing to expose size-returning allocation functions to
+*new-expression*s. We propose that a hypothetical (placement) *new-expression* that would find a
+size-returning allocation function during lookup is ill-formed. (No such expressions can
+currently exist.)
+
+# Proposed Wording # {#prop}
+
+We propose wording, relative to [[N4917]]:
+
+* Amend [basic.stc.dynamic.general], paragraph 2:
 
 <blockquote>
 The library provides default definitions for the global allocation and deallocation functions.
 Some global allocation and deallocation functions are replaceable ([new.delete]).
 A C++ program shall provide at most one definition of a replaceable allocation or deallocation function.
 Any such function definition replaces the default version provided in the library ([replacement.functions]).
-The following allocation and deallocation functions ([support.dynamic]) are implicitly declared in global scope in each translation unit of a program.
+The following allocation and deallocation functions ([support.dynamic]) are implicitly declared
+in global scope in each translation unit of a program.
 
 <pre>
   [[nodiscard]] void* operator new(std::size_t);
   [[nodiscard]] void* operator new(std::size_t, std::align_val_t);
-  <ins>[[nodiscard]] std::sized_allocation_t&lt;void&gt; operator new(std::size_t, 
-      std::return_size_t);</ins>
-  <ins>[[nodiscard]] std::sized_allocation_t&lt;void&gt; operator new(std::size_t, std::align_val_t, 
-      std::return_size_t);</ins>
+  <ins>[[nodiscard]] std::sized_allocation_t operator new(std::size_t, std::return_size_t);</ins>
+  <ins>[[nodiscard]] std::sized_allocation_t operator new(std::size_t, std::align_val_t,
+                                                     std::return_size_t);</ins>
   
   void operator delete(void*) noexcept;
   void operator delete(void*, std::size_t) noexcept;
@@ -212,10 +242,9 @@ The following allocation and deallocation functions ([support.dynamic]) are impl
   
   [[nodiscard]] void* operator new[](std::size_t);
   [[nodiscard]] void* operator new[](std::size_t, std::align_val_t);
-  <ins>[[nodiscard]] std::sized_allocation_t&lt;void&gt; operator new[](std::size_t,
-      std::return_size_t);</ins>
-  <ins>[[nodiscard]] std::sized_allocation_t&lt;void&gt; operator new[](std::size_t, std::align_val_t,
-      std::return_size_t);</ins>
+  <ins>[[nodiscard]] std::sized_allocation_t operator new[](std::size_t, std::return_size_t);</ins>
+  <ins>[[nodiscard]] std::sized_allocation_t operator new[](std::size_t, std::align_val_t,
+                                                       std::return_size_t);</ins>
 
   void operator delete[](void*) noexcept;
   void operator delete[](void*, std::size_t) noexcept;
@@ -225,10 +254,10 @@ The following allocation and deallocation functions ([support.dynamic]) are impl
 
 These implicit declarations introduce only the function names `operator new`, `operator new[]`, `operator delete`, and `operator delete[]`.
 
-[ Note 2: The implicit declarations do not introduce the names `std`, `std::size_t`, `std::align_val_t`<ins>, `std::return_size_t`</ins> or any other names that the library uses to declare these names.
-Thus, a *new-expression*, *delete-expression*, or function call that refers to one of these functions without importing or including the header `<new>` is well-formed.
-However, referring to `std` or `std::size_t` or `std::align_val_t`<ins> or `std::return_size_t`</ins> is ill-formed unless the name has been declared by importing or including the appropriate header.
-— end note ]
+[Note 2: The implicit declarations do not introduce the names `std`, `std::size_t`, `std::align_val_t`, <ins>`std::return_size_t`,</ins> or any other names that the library uses to declare these names.
+Thus, a *new-expression*, *delete-expression*, or function call that refers to one of these functions without importing or including the header `<new>` ([new.syn]) or importing a C++ library module ([std.modules]) is well-formed.
+However, referring to `std` or `std::size_t` or `std::align_val_t`<ins> or `std::return_size_t`</ins> is ill-formed unless a standard library declaration ([...]) of that name precedes ([basic.lookup.general]) the use of that name.
+— end note]
 
 Allocation and/or deallocation functions may also be declared and defined for any class ([class.free]).
 
@@ -238,7 +267,7 @@ Allocation and/or deallocation functions may also be declared and defined for an
 
 <blockquote>
 An allocation function that is not a class member function shall belong to the global scope and not have a name with internal linkage.
-The return type shall be <ins>`std::sized_allocation_t<void>` ([new.syn]) if the allocation function is a size-returning allocation function and </ins>`void*`<ins> otherwise</ins>.
+The return type shall be <ins>`std::sized_allocation_t` ([new.syn]) if the allocation function is a size-returning allocation function and </ins>`void*`<ins> otherwise</ins>.
 The first parameter shall have type `std::size_t` ([support.types]).
 The first parameter shall not have an associated default argument ([dcl.fct.default]).
 The value of the first parameter is interpreted as the requested size of the allocation.
@@ -254,140 +283,6 @@ Allocation function templates shall have two or more parameters<ins> as specifie
 <ins>A size-returning allocation function returns a value with a member subobject that is a pointer suitable to hold the address of potentially allocated storage, and therefore all allocation functions are said to return a pointer value.</ins>
 </blockquote>
 
-* Insert [expr.new], after paragraph 9:
-
-<blockquote><ins> A *new-pointer* is a pointer that results from evaluating the *new-expression*:
-*   If the *new-expression* is a size-returning placement new expression then *new-pointer* is the `ptr` member of `std::sized_allocation_t<T>` ([new.syn])
-*   Otherwise *new-pointer* is a prvalue of type "pointer to T"
-
-</ins>
-</blockquote>
-
-* Amend [expr.new], paragraph 10:
-
-<blockquote>
-When the allocated type is "array of N T" (that is, the *noptr-new-declarator* syntax is used or the *new-type-id* or *type-id* denotes an array type), <del>the *new-expression* yields a prvalue of type "pointer to T" that points to the initial element (if any) of the array.
-Otherwise, let T be the allocated type; the *new-expression* is a prvalue of type "pointer to T" that points to the object created</del><ins>the *new-pointer* points to the initial element (if any) of the array. Otherwise, let T be the allocated type; the new-pointer points to the object created</ins>.
-</blockquote>
-
-* Amend [expr.new], paragraph 16:
-
-<blockquote>
-When a *new-expression* calls an allocation function and that allocation has not been extended, the *new-expression* passes the amount of space requested to the allocation function as the first argument of type `std::size_t`.
-That argument shall be no less than the size of the object being created; it may be greater than the size of the object being created only if the object is an array and the allocation function is not a non-allocating form ([new.delete.placement]).
-For arrays of `char`, `unsigned char`, and `std::byte`, the difference between the <del>result of the *new-expression*</del><ins>*new-pointer*</ins> and the address returned by the allocation function shall be an integral multiple of the strictest fundamental alignment requirement of any object type whose size is no greater than the size of the array being created.
-</blockquote>
-
-
-* Insert [expr.new], after paragraph 17:
-
-<blockquote>
-<ins>
-The result of a size-returning placement *new-expression* is an object of type `std::sized_allocation_t<T>` ([new.syn]) whose `ptr` member points to the object created and `bytes` member satisfies <math>requested &le; bytes &le; returned</math>, where
-*   `bytes` is the number of bytes of valid storage starting from `ptr`, and
-*   when the allocated type is "array of N T"
-    *   `requested` is `sizeof(T) * N`, and 
-    *   `returned` is the number of bytes of storage returned by the size-returning allocation function less any array allocation overhead,
-*   otherwise
-    *   `requested` is `sizeof(T)`, and 
-    *   `returned` is the number of bytes of storage returned by the size-returning allocation function.
-
-</ins>
-</blockquote>
-
-* Amend [expr.new], paragraph 19:
-
-<blockquote>
-[Example 6:
-
-*    <ins>`new(std::return_size) T` results in one of the following calls</ins>:
-    *    <ins>operator new(sizeof(T), std::return_size))</ins>
-    *    <ins>operator new(sizeof(T), std::align_val_t(alignof(T)), std::return_size))</ins>
-
-*    <ins>`new(std::return_size,2,f) T` results in one of the following calls</ins>:
-    *    <ins>operator new(sizeof(T), std::return_size), 2, f)</ins>
-    *    <ins>operator new(sizeof(T), std::align_val_t(alignof(T)), std::return_size), 2, f)</ins>
-
-*    <ins>`new(std::return_size) T[5]` results in one of the following calls</ins>:
-    *    <ins>operator new[](sizeof(T) * 5 + x, std::return_size))</ins>
-    *    <ins>operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)), std::return_size))</ins>
-
-*    <ins>`new(std::return_size,2,f) T[5]` results in one of the following calls</ins>:
-    *    <ins>operator new[](sizeof(T) * 5 + x, std::return_size), 2, f)</ins>
-    *    <ins>operator new[](sizeof(T) * 5 + x, std::align_val_t(alignof(T)), std::return_size), 2, f)</ins>
-
-Here, each instance of x is a non-negative unspecified value representing array allocation overhead; the result of the *new-expression* will be offset by this amount from the value returned by `operator new[]`. This overhead may be applied in all array *new-expressions*, including those referencing a placement allocation function, except when referencing the library function `operator new[](std::size_t, void*)`.
-The amount of overhead may vary from one invocation of new to another.
-— end example]
-</blockquote>
-
-* Amend [expr.new], paragraph 21:
-
-<blockquote>
-[Note 10: Unless an allocation function has a non-throwing exception specification, it indicates failure to allocate storage by throwing a `std::bad_alloc` exception ([basic.stc.dynamic.allocation], [except], [bad.alloc]); <del>it returns</del><ins>*new-pointer* is</ins> a non-null pointer otherwise.
-If the allocation function has a non-throwing exception specification, <del>it returns</del><ins>*new-pointer* is</ins> null to indicate failure to allocate storage and <ins>*new-pointer* is </ins>a non-null pointer otherwise.
-— end note]
-
-If the allocation function is a non-allocating form ([new.delete.placement]) <del>that returns</del><ins>whose *new-pointer*</ins> null, the behavior is undefined.
-Otherwise, if the allocation function<ins>'s *new-pointer* is</ins> <del>returns</del> null, initialization shall not be done, the deallocation function shall not be called, and the value of the new-expression shall be null.
-
-</blockquote>
-
-* Amend [expr.new], paragraph 22:
-
-<blockquote>
-
-[Note 11: When the allocation function<ins>'s *new-pointer* is</ins> <del>returns</del> a value other than null, it must be a pointer to a block of storage in which space for the object has been reserved.
-The block of storage is assumed to be appropriately aligned and of the requested size.
-The address of the created object will not necessarily be the same as that of the block if the object is an array.
-— end note]
-
-</blockquote>
-
-* Amend [expr.new], paragraph 29:
-
-<blockquote>
-If a new-expression calls a deallocation function, it passes the <del>value returned</del><ins>*new-pointer*</ins> from the allocation function call as the first argument of type void*.
-If a placement deallocation function is called, it is passed the same additional arguments as were passed to the placement allocation function, that is, the same arguments as those specified with the new-placement syntax.
-If the implementation is allowed to introduce a temporary object or make a copy of any argument as part of the call to the allocation function, it is unspecified whether the same object is used in the call to both the allocation and deallocation functions.
-</blockquote>
-
-* Amend [expr.delete], paragraph 2:
-
-<blockquote>
-If the operand has a class type, the operand is converted to a pointer type by calling the above-mentioned conversion function, and the converted operand is used in place of the original operand for the remainder of this subclause.
-In a single-object delete expression, the value of the operand of `delete` may be a null pointer value, <del>a pointer value that resulted from </del><ins>the *new-pointer* of </ins>a previous non-array *new-expression*, or a pointer to a base class subobject of an object created by such a *new-expression*.
-If not, the behavior is undefined.
-In an array delete expression, the value of the operand of `delete` may be a null pointer value or <del>a pointer value that resulted from</del><ins>the *new-pointer* of</ins> a previous array *new-expression*.
-If not, the behavior is undefined.
-
-[Note 1: This means that the syntax of the delete-expression must match the type of the object allocated by new, not the syntax of the new-expression.
-— end note]
-
-[Note 2: A pointer to a const type can be the operand of a delete-expression; it is not necessary to cast away the constness ([expr.const.cast]) of the pointer expression before it is used as the operand of the delete-expression.
-— end note]
-
-</blockquote>
-
-* Amend [expr.delete], paragraph 7:
-
-<blockquote>
-If the value of the operand of the delete-expression is not a null pointer value, then:
-
-    If the allocation call for the *new-expression* for the object to be deleted was not omitted and the allocation was not extended ([expr.new]), the *delete-expression* shall call a deallocation function.
-    The <del>value returned from the allocation call of the new-expression</del><ins>*new-pointer*</ins> shall be passed as the first argument to the deallocation function.
-
-    Otherwise, if the allocation was extended or was provided by extending the allocation of another *new-expression*, and the *delete-expression* for every other <del>pointer value produced by a *new-expression*</del><ins>*new-pointer*</ins> that had storage provided by the extended *new-expression* has been evaluated, the *delete-expression* shall call a deallocation function.
-    The <del>value returned from the allocation call</del><ins>*new-pointer*</ins> of the extended new-expression shall be passed as the first argument to the deallocation function.
-
-    Otherwise, the *delete-expression* will not call a deallocation function.
-
-[Note 3: The deallocation function is called regardless of whether the destructor for the object or some element of the array throws an exception.
-— end note]
-
-If the value of the operand of the *delete-expression* is a null pointer value, it is unspecified whether a deallocation function will be called as described above.
-</blockquote>
-
 * Amend [replacement.functions], paragraph 2:
 
 <pre>
@@ -395,28 +290,24 @@ operator new(std::size_t)
 operator new(std::size_t, std::align_val_t)
 operator new(std::size_t, const std::nothrow_t&)
 operator new(std::size_t, std::align_val_t, const std::nothrow_t&)
-
 <ins>
 operator new(std::size_t size, std::return_size_t)
 operator new(std::size_t size, std::align_val_t al, std::return_size_t)
 operator new(std::size_t size, std::return_size_t, std::nothrow_t)
 operator new(std::size_t size, std::align_val_t al, std::return_size_t, std::nothrow_t)
 </ins>
-
 [...]
 
 operator new[](std::size_t)
 operator new[](std::size_t, std::align_val_t)
 operator new[](std::size_t, const std::nothrow_t&)
 operator new[](std::size_t, std::align_val_t, const std::nothrow_t&)
-
 <ins>
 operator new[](std::size_t size, std::return_size_t)
 operator new[](std::size_t size, std::align_val_t al, std::return_size_t)
 operator new[](std::size_t size, std::return_size_t, std::nothrow_t)
 operator new[](std::size_t size, std::align_val_t al, std::return_size_t, std::nothrow_t)
 </ins>
-
 [...]
 
 </pre>
@@ -432,22 +323,18 @@ namespace std {
     explicit destroying_delete_t() = default;
   };
   inline constexpr destroying_delete_t destroying_delete{};
-
 <ins>
   // global operator new control
   struct return_size_t {
     explicit return_size_t() = default;
   };
-
   inline constexpr return_size_t return_size{};
 
-  template&lt;typename T = void&gt;
   struct sized_allocation_t {
-    T *ptr;
+    void *ptr;
     size_t bytes;
   };
 </ins>
-
   enum class align_val_t : size_t {};
 
   [...]
@@ -458,16 +345,16 @@ namespace std {
 [[nodiscard]] void* operator new(std::size_t size, const std::nothrow_t&) noexcept;
 [[nodiscard]] void* operator new(std::size_t size, std::align_val_t alignment,
                                  const std::nothrow_t&) noexcept;
-
 <ins>
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new(
-        std::size_t size, std::return_size_t);
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new(
-	std::size_t size, std::align_val_t alignment, std::return_size_t);
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new(
-	std::size_t size, std::return_size_t, std::nothrow_t) noexcept;
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new(
-	std::size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
+[[nodiscard]] std::sized_allocation_t operator new(
+  std::size_t size, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t operator new(
+  std::size_t size, std::align_val_t alignment, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t operator new(
+  std::size_t size, std::return_size_t, std::nothrow_t) noexcept;
+[[nodiscard]] std::sized_allocation_t operator new(
+  std::size_t size, std::align_val_t alignment, std::return_size_t,
+  std::nothrow_t) noexcept;
 </ins>
 [...]
 
@@ -476,23 +363,23 @@ namespace std {
 [[nodiscard]] void* operator new[](std::size_t size, const std::nothrow_t&) noexcept;
 [[nodiscard]] void* operator new[](std::size_t size, std::align_val_t alignment,
                                    const std::nothrow_t&) noexcept;
-
 <ins>
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
-        std::size_t size, std::return_size_t);
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
-	std::size_t size, std::align_val_t alignment, std::return_size_t);
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
-	std::size_t size, std::return_size_t, std::nothrow_t) noexcept;
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
-	std::size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
+[[nodiscard]] std::sized_allocation_t operator new[](
+  std::size_t size, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t operator new[](
+  std::size_t size, std::align_val_t alignment, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t operator new[](
+  std::size_t size, std::return_size_t, std::nothrow_t) noexcept;
+[[nodiscard]] std::sized_allocation_t operator new[](
+  std::size_t size, std::align_val_t alignment, std::return_size_t,
+  std::nothrow_t) noexcept;
 </ins>
 [...]
 
 [[nodiscard]] void* operator new  (std::size_t size, void* ptr) noexcept;
 [[nodiscard]] void* operator new[](std::size_t size, void* ptr) noexcept;
-void  operator delete  (void* ptr, void*) noexcept;
-void  operator delete[](void* ptr, void*) noexcept;
+void operator delete  (void* ptr, void*) noexcept;
+void operator delete[](void* ptr, void*) noexcept;
 </pre>
 
 * Insert [new.delete.single], after paragraph 4:
@@ -500,10 +387,10 @@ void  operator delete[](void* ptr, void*) noexcept;
 <blockquote>
 <pre>
 <ins>
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new(
-        std::size_t size, std::return_size_t);
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new(
-	std::size_t size, std::align_val_t alignment, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t ::operator new(
+  std::size_t size, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t ::operator new(
+  std::size_t size, std::align_val_t alignment, std::return_size_t);
 </ins>
 </pre>
 
@@ -513,13 +400,13 @@ void  operator delete[](void* ptr, void*) noexcept;
 *   <ins>*Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.</ins>
-*   <ins>*Required behavior*: Return a `sized_allocation_t<void>` whose `ptr` member
+*   <ins>*Required behavior*: Return a `sized_allocation_t` whose `ptr` member
     represents the address of a region of *N* bytes of suitably aligned storage
     ([basic.stc.dynamic]) for some <math>*N* >= *size*</math>, and whose `bytes` member is
     *N*, or else throw a `bad_alloc` exception.  This requirement is binding on
     any replacement versions of these functions.</ins>
-*   <ins>*Default behavior*: Returns `std::sized_allocation_t<void>{operator new(size), N}` and
-    `std::sized_allocation_t<void>{operator new(size, alignment), N}` respectively. If a
+*   <ins>*Default behavior*: Returns `std::sized_allocation_t{operator new(size), N}` and
+    `std::sized_allocation_t{operator new(size, alignment), N}` respectively. If a
     user-provided operator new is invoked directly or indirectly, N is `size`.</ins>
 
 </blockquote>
@@ -529,10 +416,10 @@ void  operator delete[](void* ptr, void*) noexcept;
 <blockquote>
 <pre>
 <ins>
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new(
-	std::size_t size, std::return_size_t, std::nothrow_t) noexcept;
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new(
-	std::size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
+[[nodiscard]] std::sized_allocation_t ::operator new(
+  std::size_t size, std::return_size_t, std::nothrow_t) noexcept;
+[[nodiscard]] std::sized_allocation_t ::operator new(
+  std::size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
 </ins>
 </pre>
 
@@ -542,22 +429,22 @@ void  operator delete[](void* ptr, void*) noexcept;
 *   <ins>*Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.</ins>
-*   <ins>*Required behavior*: Return a `sized_allocation_t<void>` whose `ptr` member represents the
+*   <ins>*Required behavior*: Return a `sized_allocation_t` whose `ptr` member represents the
     address of a region of *N* bytes of suitably aligned storage
     ([basic.stc.dynamic]) for some <math>*N* >= *size*</math>, and whose `bytes` member is *N*,
-    or else return `std::sized_allocation_t<void>{nullptr, 0}`.  Each of these nothrow
+    or else return `std::sized_allocation_t{nullptr, 0}`.  Each of these nothrow
     versions of `operator new` returns a pointer obtained as if acquired from
     the (possibly replaced) corresponding non-placement function.  This
     requirement is binding on any replacement versions of these functions.</ins>
-*   <ins>*Default behavior*: Returns `std::sized_allocation_t<void>{operator new(size), N}` and
-    `std::sized_allocation_t<void>{operator new(size, alignment), N}` respectively. If a
+*   <ins>*Default behavior*: Returns `std::sized_allocation_t{operator new(size), N}` and
+    `std::sized_allocation_t{operator new(size, alignment), N}` respectively. If a
     user-provided operator new is invoked directly or indirectly, N is `size`.
     If the call to `operator new` throws, returns
-    `std::sized_allocation_t<void>{nullptr, 0}`.</ins>
+    `std::sized_allocation_t{nullptr, 0}`.</ins>
 
 </blockquote>
 
-* Amend [new.delete.single], paragraph 12:
+* Amend [new.delete.single], paragraph 11:
 
 <pre>
 void operator delete(void* ptr) noexcept;
@@ -574,7 +461,7 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
     returned `ptr`<ins>, if `ptr` was not allocated by a size-returning
     allocation function.  If present, the `size` argument shall satisfy <math>*bytes* >=
     *size* >= *requested*</math> if `ptr` was allocated by a size-returning allocation
-    function, where `bytes` is the size returned in `std::sized_allocation_t<void>`
+    function, where `bytes` is the size returned in `std::sized_allocation_t`
     and `requested` is the size argument passed to the allocation
     function</ins>.
 
@@ -586,10 +473,10 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
 <blockquote>
 <pre>
 <ins>
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
-        std::size_t size, std::return_size_t);
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
-	std::size_t size, std::align_val_t alignment, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t ::operator new[](
+  std::size_t size, std::return_size_t);
+[[nodiscard]] std::sized_allocation_t ::operator new[](
+  std::size_t size, std::align_val_t alignment, std::return_size_t);
 </ins>
 </pre>
 
@@ -599,13 +486,13 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
 *   <ins>*Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.</ins>
-*   <ins>*Required behavior*: Return a `sized_allocation_t<void>` whose `ptr` member
+*   <ins>*Required behavior*: Return a `sized_allocation_t` whose `ptr` member
     represents the address of a region of *N* bytes of suitably aligned storage
     ([basic.stc.dynamic]) for some <math>*N* >= *size*</math>, and whose `bytes` member is
     *N*, or else throw a `bad_alloc` exception.  This requirement is binding on
     any replacement versions of these functions.</ins>
-*   <ins>*Default behavior*: Returns `std::sized_allocation_t<void>{operator new[](size), N}` and
-    `std::sized_allocation_t<void>{operator new[](size, alignment), N}` respectively. If a
+*   <ins>*Default behavior*: Returns `std::sized_allocation_t{operator new[](size), N}` and
+    `std::sized_allocation_t{operator new[](size, alignment), N}` respectively. If a
     user-provided operator new is invoked directly or indirectly, N is `size`.</ins>
 
 </blockquote>
@@ -615,10 +502,10 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
 <blockquote>
 <pre>
 <ins>
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
-	std::size_t size, std::return_size_t, std::nothrow_t) noexcept;
-[[nodiscard]] std::sized_allocation_t&lt;void&gt; ::operator new[](
-	std::size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
+[[nodiscard]] std::sized_allocation_t ::operator new[](
+  std::size_t size, std::return_size_t, std::nothrow_t) noexcept;
+[[nodiscard]] std::sized_allocation_t ::operator new[](
+  std::size_t size, std::align_val_t alignment, std::return_size_t, std::nothrow_t) noexcept;
 </ins>
 </pre>
 
@@ -629,21 +516,21 @@ void operator delete(void* ptr, std::size_t size, std::align_val_t alignment) no
 *   <ins>*Replaceable*: A C++ program may define functions with either of these
     function signatures, and thereby displace the default versions defined by
     the C++ standard library.</ins>
-*   <ins>*Required behavior*: Return a `sized_allocation_t<void>` whose `ptr`
+*   <ins>*Required behavior*: Return a `sized_allocation_t` whose `ptr`
     member represents the address of a region of *N* bytes of suitably aligned
     storage ([basic.stc.dynamic]) for some <math>*N* >= *size*</math>, and whose `bytes`
-    member is *N*, or else return `std::sized_allocation_t<void>{nullptr, 0}`.
+    member is *N*, or else return `std::sized_allocation_t{nullptr, 0}`.
     This requirement is binding on any replacement versions of these
     functions.</ins>
-*   <ins>*Default behavior*: Returns `std::sized_allocation_t<void>{operator
-    new[](size), N}` and `std::sized_allocation_t<void>{operator new[](size,
+*   <ins>*Default behavior*: Returns `std::sized_allocation_t{operator
+    new[](size), N}` and `std::sized_allocation_t{operator new[](size,
     alignment), N}` respectively. If a user-provided operator new is invoked
     directly or indirectly, N is `size`.  If the call to `operator new[]`
-    throws, returns `std::sized_allocation_t<void>{nullptr, 0}`.</ins>
+    throws, returns `std::sized_allocation_t{nullptr, 0}`.</ins>
 
 </blockquote>
 
-* Amend [new.delete.array], paragraph 11:
+* Amend [new.delete.array], paragraph 10:
 
 <pre>
 void operator delete[](void* ptr) noexcept;
@@ -662,7 +549,7 @@ void operator delete[](void* ptr, std::size_t size, std::align_val_t alignment) 
     size-returning allocation function.  If present, the `size` argument
     shall satisfy <math>*bytes* >= *size* >= *requested*</math> if `ptr` was allocated by a
     size-returning allocation function, where `bytes` is the size returned in
-    `std::sized_allocation_t<void>` and `requested` is the size argument passed
+    `std::sized_allocation_t` and `requested` is the size argument passed
     to the allocation function</ins>.
 
 [...]
@@ -678,6 +565,8 @@ void operator delete[](void* ptr, std::size_t size, std::align_val_t alignment) 
 </blockquote>
 
 # Alternative Designs Considered # {#alternatives}
+
+## Parameters and return types
 
 Another signature we could use would be:
 
@@ -715,115 +604,57 @@ to actually return the size via memory.
 Whether we use a reference parameter or a second returned value, the
 interpretation is the same.
 
-## *How* many `::operator new`'s? ## {#splode}
+## Why `operator new`? ## {#alt-allocfn}
 
-It is unfortunate that we have so many permutations of `::operator new`--eight
-seems like far more than we should really need!  But there really isn't any
-significant runtime cost for having them.  Use of raw calls to `::operator new`
-is relatively rare:  It's a *building block* for low-level libraries, allocators
-([[P0401R4]]), and so on, so the cognitive burden on C++ users is low.
+Given the added complexity of the `operator new` overload set, one might ask why we want to
+expose this facility as such an overload, rather than something else. Concretely, we could
+provide a completely unrelated free function, or we could ask that the new behavior be exposed
+via `std::allocator<T>::allocate_at_least`.
 
-The authors have considered other alternatives to the additional overloads.  At
-the Jacksonville meeting, EWG suggested looking at parameter packs.
+Those alternatives fall short, however, since the `operator new` allocation functions have a
+special place in C++ that the alternatives do not have: They are *replaceable* and can be chosen
+by the application owner:
 
-*   Parameter packs do not reduce the number of symbols introduced.
-    Implementers still need to provide implementations each of the n overloads.
-*   Retrofitting parameter packs leaves us with *more* mangled variants.
-    Implementers need to provide both the legacy symbols as well as the
-    parameter pack-mangled symbols.
+*   Compared to an unrelated free function: an unrelated free function would not be used by
+    existing code, in particular, code that may be outside the user's control. The replaceable
+    allocation function, by contrast, can affect and benefit existing code. Moreover, it would
+    require additional integration to make the free function interoperate with `operator delete`,
+    whereas we have an existing framework for matching `operator new` and `operator delete`.
+    Finally, `operator new` enjoys various special properties regarding implicit lifetimes
+    which would need to be added explicitly to an unrelated free function.
 
-The authors have also considered APIs where all parameters are passed, thereby
-requiring a single new overload.  This adds further overhead for
-implementations, as it moves compile-time decisions (is the alignment at or
-below the minimum guaranteed by `operator new`) into runtime ones.
+*   Compared to `std::allocator`: The implementation of `std::allocator` is generally under the
+    control of the standard library vendor, not the user. The vendor is not going to select any
+    one particular malloc implementation in their `std::allocator`. In fact, the user may want
+    to use different malloc implementations in different projects. By contrast, a replaceable
+    allocation function opens the choice of malloc implementation to the user on a
+    program-by-program basis. (Note that `std::allocator` is specified to use `::operator new`,
+    and while no further details (such as choice of overload) are specified, it is reasonable to
+    assume that a size-returning `operator new` would be picked up by
+    `std::allocator::allocate_at_least` as a matter of quality-of-implementation.)
 
-The alternative to modifying the handling of *new-expressions* invoking
-deallocation functions (when an exception is thrown) would require additional
-overloads for `operator delete` / `operator delete[]` whose sole purpose would
-be to accept and discard the `std::return_size_t`.
+Finally, a suggestion that came up during the review of R10 was that we could aim at a *lower*
+level and propose a new `malloc`-like facility to both C and C++. While this would undoubtedly
+be useful, we believe that it does not replace `operator new`. That is because `operator new` is
+generally how one "obtains memory in C++"; it enjoys special properties in the language,
+e.g. regarding implicit lifetimes, and also with regards to elision or merging of allocations.
 
-## Implementation difficulty ## {#trivial}
+As a data point, the codebase at Google uses TCMalloc and its `operator new` interface, not its
+`malloc` interface, which are entirely different. A significant performance gain comes from the
+use of `operator new` and sized-`operator delete`, compared to the `malloc`/`free` interface.
+(The vast majority of memory allocations in that codebase come from `operator new` and not from
+`malloc`.) Exposing the size feedback as part of this established framework makes the performance
+benefits available in ways that a less integrated facility would not easily be able to do.
 
-It's worth reiterating that there's a perfectly good trivial implementation of these
-functions:
+## New expressions ## {#alt-newexpr}
 
-<xmp>
-std::sized_allocation_t<void> ::operator new(
-    std::size_t n, std::return_size_t) {
-  return {::operator new(n), n};
-}
-</xmp>
+We considered previously to have "size-returning *new-expression*s that expose the excess
+allocation space resulting from the allocation that's done as part of the
+*new-expression*. However, it is exceedingly awkward to make use of the excess allocation space,
+since the lifetime of the object(s) created by the `new-expression` would be distinct from
+whatever objects one later creates manually in the excess space.
 
-Malloc implementations are free to properly override this with a more impactful
-definition, but this paper poses no significant difficulty for toolchain
-implementers.
-
-Implementation Experience:
-*   TCMalloc has developed an implementation opensourced on GitHub
-    ([[MallocExtension]]).  While this requires mapping from an integer size
-    class to the true number of bytes, combining this lookup with the
-    allocation is more efficient as we avoid recomputing the sizeclass itself
-    (given a request) or deriving it from the object's address.
-*   jemalloc is prototyping a `smallocx` function providing a C API for this
-    functionality [[smallocx]].
-
-## Interaction with Sized Delete ## {#sizeddelete}
-
-For allocations made with `sized_allocation_t`-returning `::operator new`, we need to
-relax `::operator delete`'s size argument (16.6.2.1 and 16.6.2.2).  For
-allocations of `T`, the size quanta used by the allocator may not be a multiple
-of `sizeof(T)`, leading to both the original and returned sizes being
-unrecoverable at the time of deletion.
-
-Consider the memory allocated by:
-<xmp>
-using T = std::aligned_storage<16, 8>::type;
-
-std::vector<T> v(4);
-</xmp>
-The underlying heap allocation is made with `::operator new(64,
-std::return_size_t)`.
-
-*   The memory allocator may return a 72 byte object:  Since there is no `k`
-    such that `sizeof(T) * k = 72`, we can't provide that value to `::operator
-    delete(void*, size_t)`.  The only option would be storing 72 explicitly,
-    which would be wasteful.
-*   The memory allocator may instead return an 80 byte object (5 `T`'s):  We
-    now cannot represent the original request when deallocating without
-    additional storage.
-
-For allocations made with
-<xmp>
-std::tie(p, m) = ::operator new(n, std::return_size_t{});
-</xmp>
-
-we permit `::operator delete(p, s)` where <math>*n* <= *s* <= *m*</math>.
-
-This behavior is consistent with [[jemalloc]]'s `sdallocx`, where the
-deallocation size must fall between the request (`n`) and the actual allocated
-size (`m`) inclusive.
-
-## Advantages ## {#advantages}
-
-It's easy to see that this approach nicely solves the problems posed by other methods:
-
-*    We pay almost nothing in speed to return an actual-size parameter.  For
-     TCMalloc and jemalloc, this is typically a load from to map from
-     *sizeclass* to size.  This cost is strictly smaller than with `nallocx` or
-     the like, as that same translation must be performed in addition to the
-     duplicative work previously discussed.
-*    We are told exactly the size we have, without risk of UB.  We can avoid
-     subsequent reallocations when growing to a buffer to an already-allocated
-     size.
-*    Allocator telemetry knows actual request sizes exactly.
-
-# New Expressions # {#new}
-
-Additionally, we propose expanding this functionality to `new` expressions by returning:
-
-*   For `new`, a pointer to the object created and the size of the allocation in bytes.
-*   For `new[]`, a pointers to the initial element of the array and the size of
-    the allocation in bytes (less overhead):
+The following example was given in the previous revision:
 
     <xmp>
     auto [p, sz] = new (std::return_size) T[5];
@@ -839,6 +670,24 @@ Additionally, we propose expanding this functionality to `new` expressions by re
     delete[] p;
     </xmp>
 
+The example shows how the lifetime of the "requested" objects is managed by the delete
+expression, but the lifetime of the manually constructed excess objects has to be handled
+manually. This is awkward, easy to misuse, and we do not see any need for such a facility.
+
+Non-array *new-expression*s would be similarly useless.
+
+One conceivable use case, which we ultimately will not pursue, is perhaps worth describing: for
+trivial types, such as `char`, one could imagine a chain of expressions `new (std::return_size)
+char[N]`. These could successively return excess storage, but in addition, the compiler would be
+allowed to merge the allocations, because of the special allowances made to how
+*new-expression*s (don't) call allocation functions. This behavior is not achievable with
+`operator new` function calls alone.
+
+We also note in passing that in R10 `std::sized_allocation_t` was a template, whose template
+parameter would take the type used in the *new-expression*. There were implementer objections to
+having a core language facility having to instantiate templates.
+
+### Which kind of "size" ### {#alt-newsize}
 
 We considered alternatives for returning the size.
 
@@ -859,7 +708,7 @@ We considered alternatives for returning the size.
     delete[] start;
     </xmp>
 
-    The pair of pointers provides convience for use with iterator-oriented
+    The pair of pointers provides convenience for use with iterator-oriented
     algorithms.  The problem we foresee is that a size-returning allocation
     function may not provide a size that is an appropriate multiple of
     `sizeof(T)` (or fail to be a multiple of `alignof(T)`, a possible, but
@@ -938,7 +787,110 @@ For `new[]` expressions, we considered alternatively initializing the returned
 *   The presented proposal (leaving this space uninitialized) was chosen for
     consistency with `new`.
 
-# Naming # {#naming}
+# Discussion # {#discuss}
+
+## *How* many `::operator new`'s? ## {#splode}
+
+It is unfortunate that we have so many permutations of `::operator new`--eight
+seems like far more than we should really need!  But there really isn't any
+significant runtime cost for having them.  Use of raw calls to `::operator new`
+is relatively rare:  It's a *building block* for low-level libraries, allocators
+([[P0401R4]]), and so on, so the cognitive burden on C++ users is low.
+
+The authors have considered other alternatives to the additional overloads.  At
+the Jacksonville meeting, EWG suggested looking at parameter packs.
+
+*   Parameter packs do not reduce the number of symbols introduced.
+    Implementers still need to provide implementations each of the n overloads.
+*   Retrofitting parameter packs leaves us with *more* mangled variants.
+    Implementers need to provide both the legacy symbols as well as the
+    parameter pack-mangled symbols.
+
+The authors have also considered APIs where all parameters are passed, thereby
+requiring a single new overload.  This adds further overhead for
+implementations, as it moves compile-time decisions (is the alignment at or
+below the minimum guaranteed by `operator new`) into runtime ones.
+
+The alternative to modifying the handling of *new-expressions* invoking
+deallocation functions (when an exception is thrown) would require additional
+overloads for `operator delete` / `operator delete[]` whose sole purpose would
+be to accept and discard the `std::return_size_t`.
+
+## Implementation difficulty ## {#trivial}
+
+It's worth reiterating that there's a perfectly good trivial implementation of these
+functions:
+
+<xmp>
+std::sized_allocation_t ::operator new(std::size_t n, std::return_size_t) {
+  return {::operator new(n), n};
+}
+</xmp>
+
+Malloc implementations are free to properly override this with a more impactful
+definition, but this paper poses no significant difficulty for toolchain
+implementers.
+
+Implementation Experience:
+*   TCMalloc has developed an implementation opensourced on GitHub
+    ([[MallocExtension]]).  While this requires mapping from an integer size
+    class to the true number of bytes, combining this lookup with the
+    allocation is more efficient as we avoid recomputing the sizeclass itself
+    (given a request) or deriving it from the object's address.
+*   jemalloc is prototyping a `smallocx` function providing a C API for this
+    functionality [[smallocx]].
+
+## Interaction with Sized Delete ## {#sizeddelete}
+
+For allocations made with `sized_allocation_t`-returning `::operator new`, we need to
+relax `::operator delete`'s size argument (16.6.2.1 and 16.6.2.2).  For
+allocations of `T`, the size quanta used by the allocator may not be a multiple
+of `sizeof(T)`, leading to both the original and returned sizes being
+unrecoverable at the time of deletion.
+
+Consider the memory allocated by:
+<xmp>
+using T = std::aligned_storage<16, 8>::type;
+
+std::vector<T> v(4);
+</xmp>
+The underlying heap allocation is made with `::operator new(64,
+std::return_size_t)`.
+
+*   The memory allocator may return a 72 byte object:  Since there is no `k`
+    such that `sizeof(T) * k = 72`, we can't provide that value to `::operator
+    delete(void*, size_t)`.  The only option would be storing 72 explicitly,
+    which would be wasteful.
+*   The memory allocator may instead return an 80 byte object (5 `T`'s):  We
+    now cannot represent the original request when deallocating without
+    additional storage.
+
+For allocations made with
+<xmp>
+std::tie(p, m) = ::operator new(n, std::return_size_t{});
+</xmp>
+
+we permit `::operator delete(p, s)` where <math>*n* <= *s* <= *m*</math>.
+
+This behavior is consistent with [[jemalloc]]'s `sdallocx`, where the
+deallocation size must fall between the request (`n`) and the actual allocated
+size (`m`) inclusive.
+
+## Advantages ## {#advantages}
+
+It's easy to see that this approach nicely solves the problems posed by other methods:
+
+*    We pay almost nothing in speed to return an actual-size parameter.  For
+     TCMalloc and jemalloc, this is typically a load from to map from
+     *sizeclass* to size.  This cost is strictly smaller than with `nallocx` or
+     the like, as that same translation must be performed in addition to the
+     duplicative work previously discussed.
+*    We are told exactly the size we have, without risk of UB.  We can avoid
+     subsequent reallocations when growing to a buffer to an already-allocated
+     size.
+*    Allocator telemetry knows actual request sizes exactly.
+
+## Naming ## {#naming}
 
 The library support type is named  `sized_allocation_t`, based on
 LEWG's naming suggestions and for consistency (in choice of `_t`) with the
@@ -958,9 +910,33 @@ objects and whose support type's field is named `count`.
 Ironically, the lack of the above API was one significant problem in its
 original revision: how could an implementation of `std::allocator` provide the
 requested feedback in a way that would work with any underlying malloc
-implementation?
+implementation? See also [[#alt-allocfn]].
 
 # History # {#history}
+
+## R10 &rarr; D11 ## {#R11}
+
+Support for *new-expression*s is removed, and the class template
+`sized_return_t` is changed to a non-template class with a `void*`
+member.
+
+Rationale added why the facility needs to be provided as an allocation
+function, rather than some unrelated free function or as a detail of
+`std::allocator`
+
+## R9 &rarr; R10 ## {#R10}
+
+A detailed design of *new-expression*s has been added. Previously,
+changes to *new-expression*s had only been outlined at a high level.
+As a result, previously suggested changes to overload resolution rules
+for finding the allocation function (which was allowed to fall back
+to a non-size-returning allocation functon, with unclear consequences)
+have been removed. The relation between *new-expression*s and allocation
+functions is now described explicitly.
+
+Sections are reorganized: alternative designs are now separate from
+a discussion of the chosen design, and an expanded section on *new-expressions*
+has been moved up before the proposed wording.
 
 ## R8 &rarr; R9 ## {#R9}
 
@@ -1113,19 +1089,16 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
     },
 
     "Cologne": {
-	"href": "http://wiki.edg.com/bin/view/Wg21cologne2019/P0901R4-EWG",
 	"date": "2019-09-17",
 	"title": "Size feedback in operator new"
     },
 
     "CWG2021Telecon": {
-      "href": "https://wiki.edg.com/bin/view/Wg21telecons2021/PaperReviewTeleconference2021-03-22",
       "date": "2021-03-22",
       "title": "Paper Review Teleconference 2021-03-22"
     },
 
     "JacksonvilleMinutes": {
-        "href": "http://wiki.edg.com/bin/view/Wg21jacksonville2018/P0901R0-Jax18",
         "date": "2018-03-15",
         "title": "Jacksonville 2018 minutes"
     },
@@ -1146,22 +1119,10 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
         "date": "2016-11-03"
     },
 
-    "N4762": {
+    "N4917": {
         "title": "Working Draft, Standard for Programming Language C++",
-        "href": "https://wg21.link/N4762",
-        "date": "2018-07-07"
-    },
-
-    "N4791": {
-        "title": "Working Draft, Standard for Programming Language C++",
-        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4791.pdf",
-        "date": "2018-12-07"
-    },
-
-    "CppDraft": {
-        "title": "Working Draft, Standard for Programming Language C++",
-        "href": "https://eel.is/c++draft/",
-        "date": "2022-04-12"
+        "href": "https://open-std.org/jtc1/sc22/wg21/docs/papers/2022/n4917.pdf",
+        "date": "2022-09-05"
     },
 
     "P0401": {
@@ -1184,13 +1145,12 @@ Additionally, a discussion of [[#sizeddelete]] has been added.
 
     "Prague": {
         "title": "LEWG Prague Minutes for P901R5",
-        "date": "2020-02-10",
-        "href": "http://wiki.edg.com/bin/view/Wg21prague/P0901"
+        "date": "2020-02-10"
     },
 
     "SizedDelete": {
         "title": "C++ Sized Deallocation",
-        "authors": "Lawrence Crowl",
+        "authors": ["Lawrence Crowl"],
         "href": "http://wg21.link/n3536"
     },
 
