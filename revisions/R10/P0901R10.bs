@@ -7,10 +7,10 @@ Revision: 10
 Editor: Andrew Hunter, andrewhhunter@gmail.com
 Editor: Chris Kennelly, Google, ckennelly@google.com
 Editor: Thomas K&ouml;ppe, Google DeepMind, tkoeppe@google.com
-Date: 2022-11-08
+Date: 2022-11-09
 Audience: CWG, EWG, LWG
 Abstract: Provide access to actual malloc buffer sizes for users.
-URL: http://wg21.link/D0901R10
+URL: http://wg21.link/P0901R10
 Markup Shorthands: markdown yes
 Default Highlight: C++
 </pre>
@@ -1050,7 +1050,7 @@ implementation?
 
 # History # {#history}
 
-## R9 &rarr; P10 ## {#R10}
+## R9 &rarr; R10 ## {#R10}
 
 A detailed design of *new-expression*s has been added. Previously,
 changes to *new-expression*s had only been outlined at a high level.
