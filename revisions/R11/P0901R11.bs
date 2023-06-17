@@ -1,16 +1,16 @@
 <pre class='metadata'>
 Title: Size feedback in operator new
-Status: D
-Shortname: D0901
+Status: P
+Shortname: P0901
 Group: WG21
 Revision: 11
 Editor: Andrew Hunter, andrewhhunter@gmail.com
 Editor: Chris Kennelly, Google, ckennelly@google.com
 Editor: Thomas K&ouml;ppe, Google DeepMind, tkoeppe@google.com
-Date: 2023-06-16
+Date: 2023-06-17
 Audience: CWG, EWG, LWG
 Abstract: Provide access to actual malloc buffer sizes for users.
-URL: http://wg21.link/D0901R11
+URL: http://wg21.link/P0901R11
 Markup Shorthands: markdown yes
 Default Highlight: C++
 </pre>
@@ -970,7 +970,7 @@ implementation? See also [[#alt-allocfn]].
 
 # History # {#history}
 
-## R10 &rarr; D11 ## {#R11}
+## R10 &rarr; R11 ## {#R11}
 
 Support for *new-expression*s is removed, and the class template
 `sized_return_t` is changed to a non-template class with a `void*`
